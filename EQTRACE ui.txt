@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EQTRACE - Comprehensive geotechnical analysis platform</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1GU9ImV2ZW5vZGQiPjxyZWN0IHdpZHRoPSI0OCIgaGVpZHRoPSIzNiIgeT0iMTIiIGZpbGw9IiNGMEYyRjUiIHJ4PSIyIi8+PHJlY3QgeD0iMCIgeT0iMzUiIHdpZHRoPSI0OCIgaGVpZHRoPSIxMyIgZmlsbD0iIzM3NDc0RiIgcng9IjIiLz48cmVjdCB4PSIwIiB5PSIyOCIgd2lkdGg9IjQ4IiBoZWlnaHQ9IjciIGZpbGw9IiM1NDY5NzgiIG9wYWNpdHk9Ii4eightIiByeD0iMSIvPjxyZWN0IHg9IjAiIHk9IjIyIiB3aWR0aD0iNDgiIGhlaWdodD0iNiIgZmlsbD0iIzgxODh4YSyIgb3BhY2l0eT0iLjYiIHJ4PSIxIi8+PHBhdGggZD0iTTIgMTIgUTggOCAxNCAxMiBUMjYgMTIgVDM4IDEyIFQ0NiAxMiIgc3Ryb2tlPSIjRDYzOTQ2IiBzdHJva2Utd2lkdGg9IjIuNSIvPjxwYXRoIGQ9Ik0yIDMwIFE4IDI4IDE0IDMwIFQyNiAzMCBUMzggMzAgVDQ2IDMwIiBzdHJva2U9IiMxOTcyQjIiIHN0cm9rZS13aWR0aD0iMiIvPjwvZz48L3N2Zz4=">
+
+    <!-- Internal Styles -->
+    <style>
+        :root {
+            --bg-main: #F0F2F5;
+            --bg-sidebar: #1A202C;
+            --bg-header: #FFFFFF;
+            --bg-content-area: #FFFFFF;
+            --text-primary: #1A202C;
+            --text-secondary: #718096;
+            --text-sidebar: #A0AEC0;
+            --text-sidebar-hover: #FFFFFF;
+            --border-color: #E2E8F0;
+            --accent-primary: #2563EB;
+            --accent-primary-hover: #1D4ED8;
+            --gradient-start: linear-gradient(135deg, var(--accent-primary), #8B5CF6);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .app-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            grid-template-rows: 64px 1fr 40px;
+            grid-template-areas:
+                "header header"
+                "sidebar main"
+                "sidebar footer";
+            height: 100vh;
+            overflow: hidden;
+            transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .app-layout.sidebar-collapsed {
+            grid-template-columns: 68px 1fr;
+        }
+
+        .app-header { grid-area: header; }
+        .app-sidebar { grid-area: sidebar; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .app-main { grid-area: main; overflow-y: auto; padding: 2rem; }
+        .app-footer { grid-area: footer; }
+
+        .sidebar-nav-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            color: var(--text-sidebar);
+            font-weight: 500;
+            border-left: 3px solid transparent;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        .sidebar-nav-item i {
+            width: 24px;
+            margin-right: 0.75rem;
+            text-align: center;
+            transition: margin 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .sidebar-nav-item .sidebar-text {
+            opacity: 1;
+            transition: opacity 0.2s ease-in-out;
+        }
+        .app-layout.sidebar-collapsed .sidebar-nav-item {
+            justify-content: center;
+            padding: 0.75rem 0;
+        }
+        .app-layout.sidebar-collapsed .sidebar-nav-item i {
+            margin-right: 0;
+        }
+        .app-layout.sidebar-collapsed .sidebar-nav-item .sidebar-text {
+            opacity: 0;
+            width: 0;
+        }
+        
+        .sidebar-nav-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--text-sidebar-hover);
+        }
+        .sidebar-nav-item.active {
+            background-color: rgba(37, 99, 235, 0.2);
+            color: var(--text-sidebar-hover);
+            border-left-color: var(--accent-primary);
+        }
+
+        .content-panel {
+            background-color: var(--bg-content-area);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 2rem;
+            animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            border: 1px solid transparent;
+        }
+        .btn-primary {
+            background-color: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+        }
+        .btn-primary:hover {
+            background-color: var(--accent-primary-hover);
+            border-color: var(--accent-primary-hover);
+        }
+        .btn-secondary {
+            background-color: var(--bg-content-area);
+            color: var(--text-primary);
+            border-color: var(--border-color);
+        }
+        .btn-secondary:hover {
+            background-color: #F7FAFC;
+            border-color: #CBD5E0;
+        }
+
+        .phase-content.hidden {
+            display: none;
+        }
+
+        #notification-toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background-color: #2D3748;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            transform: translateY(200%);
+            transition: transform 0.3s ease-in-out;
+            z-index: 100;
+        }
+        #notification-toast.show {
+            transform: translateY(0);
+        }
+        
+        #sidebar-toggle-btn i {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .app-layout.sidebar-collapsed #sidebar-toggle-btn i {
+             transform: rotate(90deg);
+        }
+
+        /* Styles for Introduction Content */
+        .intro-title {
+            font-size: 2.25rem;
+            line-height: 1.2;
+            font-weight: 800;
+            background: var(--gradient-start);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .workflow-visualization {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            gap: 1rem;
+            margin: 2.5rem 0;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(139, 92, 246, 0.05));
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+        .workflow-step-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            min-width: 110px;
+        }
+        .workflow-step-block:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            border-color: var(--accent-primary);
+        }
+        .workflow-step-block.active {
+            border-color: var(--accent-primary);
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.15);
+        }
+        .workflow-step-icon { font-size: 1.75rem; margin-bottom: 0.75rem; }
+        .workflow-step-title { font-size: 0.875rem; font-weight: 600; text-align: center; }
+        .workflow-arrow { color: var(--text-secondary); font-size: 1.25rem; }
+        
+        .workflow-description-panel {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background-color: #f8fafc;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-primary);
+        }
+        .workflow-description-panel h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .workflow-description-panel p { color: var(--text-secondary); }
+
+        .deconvolution-graphic {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2.5rem 0;
+            display: flex;
+            gap: 1rem;
+            align-items: stretch;
+        }
+        .deconvolution-graphic h3 { text-align: center; margin-bottom: 2rem; color: white; font-size: 1.5rem; font-weight: 700; }
+        
+        .decon-layers-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .decon-layer {
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: background-color 0.3s ease;
+        }
+
+        .surface-layer { background-color: #374151; min-height: 110px; }
+        .soil-layer-1 { background-color: #424b59; min-height: 90px; }
+        .soil-layer-2 { background-color: #4b5563; min-height: 90px; }
+        .bedrock-layer { background-color: #525c6a; min-height: 100px; }
+
+        .layer-info {
+            position: relative;
+            z-index: 2;
+            color: #f9fafb;
+            width: 180px;
+            flex-shrink: 0;
+        }
+        .layer-info strong { font-size: 1.1rem; display: block; }
+        .layer-info p { font-size: 0.8rem; color: #d1d5db; margin-bottom: 0.5rem; }
+        .engineering-indicator { font-size: 0.75rem; padding: 0.25rem 0.6rem; border-radius: 16px; background: rgba(255,255,255,0.1); display: inline-block; margin: 0.25rem 0.25rem 0.25rem 0; color: #e2e8f0; }
+
+        .wave-pattern-container {
+            position: absolute;
+            left: 180px;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            z-index: 1;
+        }
+
+        .key-features-section { margin: 3rem 0; }
+        .section-title h2 { text-align: center; font-size: 1.8rem; font-weight: 800; margin-bottom: 2rem; }
+        .key-features-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1.5rem; }
+        .feature-card { display: flex; flex-direction: column; text-align: center; align-items: center; background: white; border-radius: 12px; padding: 1.5rem; border: 1px solid var(--border-color); transition: all 0.3s ease; }
+        .feature-card:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
+        .feature-icon-container { flex-shrink: 0; width: 50px; height: 50px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(139, 92, 246, 0.1)); margin-bottom: 1rem; }
+        .feature-icon { font-size: 1.5rem; }
+        .feature-content h4 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .feature-content p { color: var(--text-secondary); font-size: 0.95rem; line-height: 1.6; }
+        
+        @media (max-width: 1200px) { .workflow-visualization { flex-wrap: wrap; justify-content: center; } .workflow-arrow { display: none; } }
+    </style>
+</head>
+<body>
+
+    <div class="app-layout" id="app-layout">
+        <!-- Header -->
+        <header class="app-header bg-white border-b border-gray-200 flex items-center justify-between px-6" style="border-bottom: 1px solid var(--border-color); background-color: var(--bg-header);">
+            <div class="flex items-center gap-3">
+                <button id="sidebar-toggle-btn" class="p-2 rounded-full hover:bg-gray-100 focus:outline-none" title="Toggle Sidebar">
+                     <i class="fas fa-bars text-gray-600"></i>
+                </button>
+                <div class="flex items-center gap-3">
+                    <svg width="32" height="32" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><rect width="48" height="36" y="12" fill="#F0F2F5" rx="2"/><rect x="0" y="35" width="48" height="13" fill="#37474F" rx="2"/><rect x="0" y="28" width="48" height="7" fill="#546E7A" opacity=".8" rx="1"/><rect x="0" y="22" width="48" height="6" fill="#818B8A" opacity=".6" rx="1"/><path d="M2 12 Q8 8 14 12 T26 12 T38 12 T46 12" stroke="#D63946" stroke-width="2.5"/><path d="M2 30 Q8 28 14 30 T26 30 T38 30 T46 30" stroke="#1976D2" stroke-width="2"/></g></svg>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-800">EQTRACE</h1>
+                        <p class="text-xs text-gray-500 -mt-1">Comprehensive geotechnical analysis platform</p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="importProject()" class="btn btn-secondary">
+                    <i class="fas fa-upload"></i> Import
+                </button>
+                <button onclick="saveProject()" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save Project
+                </button>
+                <input type="file" id="projectImportFile" class="hidden">
+            </div>
+        </header>
+
+        <!-- Sidebar -->
+        <aside class="app-sidebar text-white" style="background-color: var(--bg-sidebar);">
+            <nav class="mt-8">
+                <a onclick="showPhase(1)" id="phase1-tab" class="sidebar-nav-item active">
+                    <i class="fas fa-info-circle"></i><span class="sidebar-text">Platform Introduction</span>
+                </a>
+                <a onclick="showPhase(2)" id="phase2-tab" class="sidebar-nav-item">
+                    <i class="fas fa-chart-line"></i><span class="sidebar-text">Amplitude Calibration</span>
+                </a>
+                <a onclick="showPhase(3)" id="phase3-tab" class="sidebar-nav-item">
+                    <i class="fas fa-balance-scale"></i><span class="sidebar-text">Similarity Evaluation</span>
+                </a>
+                <a onclick="showPhase(4)" id="phase4-tab" class="sidebar-nav-item">
+                    <i class="fas fa-atom"></i><span class="sidebar-text">Artificial Earthquake</span>
+                </a>
+                <a onclick="showPhase(5)" id="phase5-tab" class="sidebar-nav-item">
+                    <i class="fas fa-search-plus"></i><span class="sidebar-text">Earthquake Interpolation</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="app-main">
+            <div id="phase1-content" class="phase-content content-panel">
+                <div class="text-center mb-8">
+                    <h1 class="intro-title mb-4">
+                        EQTRACE Comprehensive geotechnical analysis platform
+                    </h1>
+                    <!-- Collapsible Section -->
+                    <div class="max-w-3xl mx-auto text-left">
+                        <button id="intro-toggle-btn" class="flex items-center justify-between w-full text-left py-3 px-4 rounded-lg bg-gray-50 hover:bg-gray-100 focus:outline-none border">
+                            <span class="text-lg font-semibold text-gray-800">Program Functionalities</span>
+                            <i id="intro-toggle-icon" class="fas fa-chevron-down transition-transform duration-300"></i>
+                        </button>
+                        <div id="intro-collapsible-content" class="overflow-hidden transition-all duration-500 ease-in-out" style="max-height: 0px;">
+                            <div class="pt-4">
+                                <ul class="list-disc list-inside text-lg text-gray-600 space-y-3 pl-2">
+                                    <li>
+                                        <strong>Site-Specific Deconvolution:</strong> Transform surface acceleration measurements into accurate bedrock motion estimates.
+                                    </li>
+                                    <li>
+                                        <strong>Amplitude Calibration:</strong> Analyze and calibrate the acceleration attenuation characteristics of seismic data.
+                                    </li>
+                                    <li>
+                                        <strong>Similarity Evaluation:</strong> Quantitatively evaluate and select the most representative ground motion records for your site.
+                                    </li>
+                                    <li>
+                                        <strong>Artificial Earthquake Generation:</strong> Create synthetic, site-specific earthquake records based on target response spectra.
+                                    </li>
+                                    <li>
+                                        <strong>Earthquake Interpolation:</strong> Generate new time histories by interpolating between existing ground motion records.
+                                    </li>
+                                    <li>
+                                        <strong>Real-time Visualization:</strong> Instantly visualize data and results with interactive charts and graphics for immediate feedback.
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="workflow-visualization">
+                    <div class="workflow-step-block" onclick="showWorkflowDescription(1); showPhase(1);" data-phase="1">
+                        <i class="fas fa-home workflow-step-icon" style="color: #3B82F6;"></i>
+                        <div class="workflow-step-title">Platform Introduction</div>
+                    </div>
+                    <div class="workflow-arrow"><i class="fas fa-arrow-right"></i></div>
+                    <div class="workflow-step-block" onclick="showWorkflowDescription(2); showPhase(2);" data-phase="2">
+                        <i class="fas fa-chart-line workflow-step-icon" style="color: #8B5CF6;"></i>
+                        <div class="workflow-step-title">Amplitude Calibration</div>
+                    </div>
+                    <div class="workflow-arrow"><i class="fas fa-arrow-right"></i></div>
+                    <div class="workflow-step-block" onclick="showWorkflowDescription(3); showPhase(3);" data-phase="3">
+                        <i class="fas fa-balance-scale workflow-step-icon" style="color: #EF4444;"></i>
+                        <div class="workflow-step-title">Similarity Evaluation</div>
+                    </div>
+                    <div class="workflow-arrow"><i class="fas fa-arrow-right"></i></div>
+                    <div class="workflow-step-block" onclick="showWorkflowDescription(4); showPhase(4);" data-phase="4">
+                        <i class="fas fa-atom workflow-step-icon" style="color: #F59E0B;"></i>
+                        <div class="workflow-step-title">Artificial Earthquake</div>
+                    </div>
+                    <div class="workflow-arrow"><i class="fas fa-arrow-right"></i></div>
+                    <div class="workflow-step-block" onclick="showWorkflowDescription(5); showPhase(5);" data-phase="5">
+                        <i class="fas fa-search-plus workflow-step-icon" style="color: #10B981;"></i>
+                        <div class="workflow-step-title">Earthquake Interpolation</div>
+                    </div>
+                </div>
+
+                <div id="workflowDescriptionPanel" class="workflow-description-panel">
+                    <h3 id="workflowDescriptionTitle">Select a phase to see its description</h3>
+                    <p id="workflowDescriptionText">Click any phase in the diagram above to learn more about its purpose and functionality.</p>
+                </div>
+
+                <div class="deconvolution-graphic">
+                    <div class="decon-layers-container">
+                        <div class="text-center mb-4">
+                             <h3 class="text-white text-xl font-bold"><i class="fas fa-layer-group mr-2"></i>Site Response Analysis</h3>
+                        </div>
+                        <!-- Surface Layer -->
+                        <div class="decon-layer surface-layer">
+                            <div class="layer-info">
+                                <strong>Surface</strong>
+                                <p>Maximum Amplification</p>
+                                <span class="engineering-indicator">PGA: 0.45g</span>
+                                <span class="engineering-indicator">0m Depth</span>
+                            </div>
+                            <div class="wave-pattern-container">
+                                <svg width="100%" height="100%"><path d="" stroke="#ef4444" stroke-width="2.5" fill="none" id="surface-wave-path"/></svg>
+                            </div>
+                        </div>
+                        <!-- Soil Layer 1 -->
+                        <div class="decon-layer soil-layer-1">
+                            <div class="layer-info">
+                                <strong>Upper Soil</strong>
+                                <p>High Amplitude</p>
+                                <span class="engineering-indicator">PGA: 0.36g</span>
+                                <span class="engineering-indicator">-10m Depth</span>
+                            </div>
+                            <div class="wave-pattern-container">
+                                <svg width="100%" height="100%"><path d="" stroke="#f59e0b" stroke-width="2" fill="none" id="soil-wave-path-1"/></svg>
+                            </div>
+                        </div>
+                        <!-- Soil Layer 2 -->
+                        <div class="decon-layer soil-layer-2">
+                            <div class="layer-info">
+                                <strong>Lower Soil</strong>
+                                <p>Moderate Amplitude</p>
+                                <span class="engineering-indicator">PGA: 0.28g</span>
+                                <span class="engineering-indicator">-20m Depth</span>
+                            </div>
+                            <div class="wave-pattern-container">
+                                <svg width="100%" height="100%"><path d="" stroke="#38bdf8" stroke-width="2" fill="none" id="soil-wave-path-2"/></svg>
+                            </div>
+                        </div>
+                        <!-- Bedrock Layer -->
+                        <div class="decon-layer bedrock-layer">
+                            <div class="layer-info">
+                                <strong>Bedrock</strong>
+                                <p>Base Motion</p>
+                                <span class="engineering-indicator">PGA: 0.18g</span>
+                                <span class="engineering-indicator">-30m Depth</span>
+                            </div>
+                            <div class="wave-pattern-container">
+                                <svg width="100%" height="100%"><path d="" stroke="#a7b3c2" stroke-width="2" fill="none" id="bedrock-wave-path"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="key-features-section">
+                    <div class="section-title"><h2>Key Features</h2></div>
+                    <div class="key-features-grid">
+                        <div class="feature-card">
+                            <div class="feature-icon-container"><i class="fas fa-sliders-h feature-icon" style="color: #8B5CF6;"></i></div>
+                            <div class="feature-content"><h4>Amplitude Calibration</h4><p>Analyze and calibrate the acceleration attenuation characteristics of seismic data.</p></div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon-container"><i class="fas fa-balance-scale feature-icon" style="color: #EF4444;"></i></div>
+                            <div class="feature-content"><h4>Similarity Evaluation</h4><p>Quantitatively evaluate and select the most representative ground motion records for your site.</p></div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon-container"><i class="fas fa-atom feature-icon" style="color: #F59E0B;"></i></div>
+                            <div class="feature-content"><h4>Artificial Earthquake</h4><p>Create synthetic, site-specific earthquake records based on target response spectra.</p></div>
+                        </div>
+                         <div class="feature-card">
+                            <div class="feature-icon-container"><i class="fas fa-search-plus feature-icon" style="color: #10B981;"></i></div>
+                            <div class="feature-content"><h4>Earthquake Interpolation</h4><p>Generate new time histories by interpolating between existing ground motion records.</p></div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon-container"><i class="fas fa-chart-area feature-icon" style="color: #06B6D4;"></i></div>
+                            <div class="feature-content"><h4>Real-time Visualization</h4><p>Instantly visualize data and results with interactive charts and graphics for immediate feedback.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="phase2-content" class="phase-content hidden content-panel">
+                <h2 class="text-2xl font-bold mb-4">Phase 2: Amplitude Calibration</h2>
+                <p>This section is for analyzing the acceleration attenuation characteristics of seismic data. Upload your ground motion records to generate attenuation plots and extract key parameters.</p>
+            </div>
+            <div id="phase3-content" class="phase-content hidden content-panel">
+                <h2 class="text-2xl font-bold mb-4">Phase 3: Similarity Evaluation</h2>
+                <p>Evaluate the similarity between different site response records using various quantitative metrics. This helps in classifying site behavior and selecting representative ground motions.</p>
+            </div>
+             <div id="phase4-content" class="phase-content hidden content-panel">
+                <h2 class="text-2xl font-bold mb-4">Phase 4: Artificial Earthquake</h2>
+                <p>Generate synthetic earthquake records based on site-specific conditions and target response spectra. This is crucial for performance-based design where recorded ground motions are insufficient.</p>
+            </div>
+            <div id="phase5-content" class="phase-content hidden content-panel">
+                <h2 class="text-2xl font-bold mb-4">Phase 5: Earthquake Interpolation</h2>
+                <p>Interpolate between existing ground motion records to create new time histories that match specific target criteria, providing a broader suite of motions for analysis.</p>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer flex items-center px-6 text-xs" style="color: var(--text-sidebar); background-color: var(--bg-sidebar);">
+            <p>© 2025 EQTRACE | Developed by Minze Chen</p>
+        </footer>
+    </div>
+    
+    <div id="notification-toast"><span id="notification-message"></span></div>
+
+    <script>
+        let notificationTimeout;
+
+        function showPhase(phaseNumber) {
+            document.querySelectorAll('.phase-content').forEach(content => content.classList.add('hidden'));
+            document.querySelectorAll('.sidebar-nav-item').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(`phase${phaseNumber}-content`).classList.remove('hidden');
+            document.getElementById(`phase${phaseNumber}-tab`).classList.add('active');
+            
+            document.querySelectorAll('.workflow-step-block').forEach(step => step.classList.remove('active'));
+            const activeStep = document.querySelector(`.workflow-step-block[data-phase="${phaseNumber}"]`);
+            if(activeStep) activeStep.classList.add('active');
+        }
+
+        function showNotification(message) {
+            const toast = document.getElementById('notification-toast');
+            const messageEl = document.getElementById('notification-message');
+            if(notificationTimeout) clearTimeout(notificationTimeout);
+            messageEl.textContent = message;
+            toast.classList.add('show');
+            notificationTimeout = setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+        
+        function saveProject() { showNotification('Project saved successfully!'); }
+        function importProject() { document.getElementById('projectImportFile').click(); }
+        
+        document.getElementById('projectImportFile').addEventListener('change', function(event) {
+            if (event.target.files.length > 0) {
+                showNotification(`File "${event.target.files[0].name}" selected.`);
+            }
+        });
+
+        document.getElementById('sidebar-toggle-btn').addEventListener('click', function() {
+            document.getElementById('app-layout').classList.toggle('sidebar-collapsed');
+        });
+
+        const workflowDescriptions = {
+            1: { title: "Platform Introduction", text: "Overview of the deconvolution process, key concepts, and the program workflow. This phase serves as the entry point and educational foundation for the user." },
+            2: { title: "Amplitude Calibration", text: "Analyze the acceleration attenuation characteristics of seismic data. Upload ground motion records to generate plots and extract key parameters." },
+            3: { title: "Similarity Evaluation", text: "Evaluate the similarity between different site response records using various quantitative metrics to classify site behavior and select representative ground motions." },
+            4: { title: "Artificial Earthquake", text: "Generate synthetic earthquake records based on site-specific conditions and target response spectra for performance-based design." },
+            5: { title: "Earthquake Interpolation", text: "Interpolate between existing ground motion records to create new time histories that match specific target criteria." }
+        };
+
+        function showWorkflowDescription(phase) {
+            const description = workflowDescriptions[phase];
+            if (description) {
+                document.getElementById('workflowDescriptionTitle').textContent = description.title;
+                document.getElementById('workflowDescriptionText').textContent = description.text;
+            }
+        }
+        
+        function generateWaveform(samples, duration) {
+            const dt = duration / samples;
+            const t = Array.from({ length: samples }, (_, i) => i * dt);
+            return t.map(ti => {
+                const noise = (Math.random() - 0.5) * 0.1;
+                const p1 = Math.exp(-0.6 * ti) * Math.sin(2 * Math.PI * 2.0 * ti);
+                const p2 = 0.6 * Math.exp(-0.8 * (ti - 2)) * Math.sin(2 * Math.PI * 5.0 * (ti - 2)) * (ti > 2 ? 1 : 0);
+                return p1 + p2 + noise;
+            });
+        }
+
+        function applyFilter(signal, ampFactor, damping) {
+            const dt = 8 / signal.length;
+            const t = Array.from({ length: signal.length }, (_, i) => i * dt);
+            return signal.map((val, i) => val * ampFactor * Math.exp(-damping * t[i]));
+        }
+
+        function renderPath(id, signal, width, height) {
+            const y = (s, h) => {
+                const max = Math.max(...s.map(Math.abs)) * 1.2 || 1;
+                return s.map(v => h * 0.5 * (1 - v / max));
+            };
+            const yPoints = y(signal, height);
+            const xStep = width / (signal.length - 1);
+            let d = `M 0 ${yPoints[0]}`;
+            for (let i = 1; i < signal.length; i++) d += ` L ${i * xStep} ${yPoints[i]}`;
+            const path = document.getElementById(id);
+            if (path) path.setAttribute("d", d);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            showPhase(1);
+            showWorkflowDescription(1);
+
+            const bedrockSignal = generateWaveform(200, 8);
+            const soilSignal2 = applyFilter(bedrockSignal, 1.6, 0.1);
+            const soilSignal1 = applyFilter(bedrockSignal, 2.0, 0.07);
+            const surfaceSignal = applyFilter(bedrockSignal, 2.5, 0.05);
+            
+            const signals = {
+                'surface-wave-path': surfaceSignal,
+                'soil-wave-path-1': soilSignal1,
+                'soil-wave-path-2': soilSignal2,
+                'bedrock-wave-path': bedrockSignal
+            };
+
+            const observer = new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    const { width, height } = entry.contentRect;
+                    const pathEl = entry.target.querySelector('path');
+                    if (pathEl && width > 0) {
+                        const signal = signals[pathEl.id];
+                        if (signal) {
+                            renderPath(pathEl.id, signal, width, height);
+                        }
+                    }
+                }
+            });
+
+            document.querySelectorAll('.wave-pattern-container').forEach(container => {
+                observer.observe(container);
+            });
+
+            // Collapsible introduction logic
+            const introToggleBtn = document.getElementById('intro-toggle-btn');
+            const introCollapsibleContent = document.getElementById('intro-collapsible-content');
+            const introToggleIcon = document.getElementById('intro-toggle-icon');
+
+            if (introToggleBtn && introCollapsibleContent && introToggleIcon) {
+                introToggleBtn.addEventListener('click', () => {
+                    const isCollapsed = introCollapsibleContent.style.maxHeight === '0px';
+                    if (isCollapsed) {
+                        introCollapsibleContent.style.maxHeight = introCollapsibleContent.scrollHeight + 'px';
+                        introToggleIcon.style.transform = 'rotate(180deg)';
+                    } else {
+                        introCollapsibleContent.style.maxHeight = '0px';
+                        introToggleIcon.style.transform = 'rotate(0deg)';
+                    }
+                });
+            }
+        });
+
+    </script>
+</body>
+</html>
+

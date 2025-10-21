@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase Sequential Earthquake Waveform Generator</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for waveform visualization and annotation plugin for shading -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0"></script>
+    <!-- Custom Google Font: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- Enhanced Visual Theme --- */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa; /* Lighter, cleaner background */
+            color: #212529; /* High contrast text */
+        }
+        .control-panel-bg {
+            background-color: #ffffff;
+            border-right: 1px solid #dee2e6;
+            box-shadow: 0 0 15px rgba(0,0,0,0.05); /* Subtle shadow for depth */
+        }
+        .card {
+            background-color: #ffffff;
+            border: 1px solid #e9ecef;
+            border-radius: 0.75rem; /* Softer corners */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .card:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.07);
+            transform: translateY(-2px);
+        }
+        .card-header {
+            background-color: #f8f9fa;
+        }
+
+        /* Base styles for all buttons and tabs for fluid transitions */
+        .btn-primary, .btn-secondary, .btn-danger, .nav-btn, .event-tab {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: center;
+        }
+        .btn-primary:hover, .btn-secondary:hover, .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .btn-primary:active, .btn-secondary:active, .btn-danger:active {
+            transform: translateY(-1px) scale(0.98);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.07);
+        }
+
+        .btn-primary {
+            background-color: #4f46e5; /* Indigo 600 */
+            color: #ffffff;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .btn-primary:hover {
+            background-color: #4338ca; /* Indigo 700 */
+        }
+        .btn-secondary {
+            background-color: #f1f5f9; /* Slate 100 */
+            color: #334155; /* Slate 700 */
+            border: 1px solid #cbd5e1; /* Slate 300 */
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .btn-secondary:hover {
+            background-color: #e2e8f0; /* Slate 200 */
+        }
+        .btn-danger {
+            background-color: #dc2626; /* Red 600 */
+            color: #ffffff;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .btn-danger:hover {
+            background-color: #b91c1c; /* Red 700 */
+        }
+
+        input, select {
+            background-color: #ffffff;
+            border: 1px solid #ced4da;
+            color: #212529;
+            border-radius: 0.375rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #4f46e5; /* Indigo 600 */
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+        }
+        input::placeholder {
+            color: #adb5bd;
+        }
+        
+        .nav-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .nav-btn.active {
+            background-color: #4f46e5; /* Indigo 600 */
+            color: #ffffff;
+            box-shadow: 0 2px 5px rgba(79, 70, 229, 0.2);
+        }
+        .nav-btn:not(.active) {
+            background-color: #e9ecef;
+            color: #495057;
+        }
+        .nav-btn:not(.active):hover {
+            background-color: #dee2e6;
+            transform: translateY(-1px);
+        }
+
+        .event-tab {
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+         .event-tab.active {
+            background-color: #4f46e5; /* Indigo 600 */
+            color: #ffffff;
+        }
+        .event-tab:not(.active) {
+            background-color: #e9ecef;
+            color: #495057;
+        }
+        .event-tab:not(.active):hover {
+            background-color: #dee2e6;
+            transform: scale(1.03);
+        }
+        .event-tab .remove-btn {
+            margin-left: 0.5rem;
+            display: none;
+            opacity: 0.7;
+        }
+        .event-tab:hover .remove-btn {
+            display: inline-block;
+        }
+        .event-tab:hover .remove-btn:hover {
+            opacity: 1;
+            color: #dc2626; /* Red 600 */
+        }
+        .calibration-tab {
+             white-space: nowrap;
+        }
+
+        /* --- Analysis View Specific Styles --- */
+        #drop-zone {
+            border: 2px dashed #ced4da;
+            transition: all 0.3s ease;
+        }
+        #drop-zone.drag-over {
+            border-color: #4f46e5; /* Indigo 600 */
+            background-color: #eef2ff; /* Indigo 50 */
+        }
+        .tooltip-container {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip-text {
+            visibility: hidden;
+            width: 220px;
+            background-color: #212529;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 10;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -110px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.75rem;
+            line-height: 1.25;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+    </style>
+</head>
+<body class="antialiased">
+    <div class="min-h-screen flex flex-col">
+        <!-- Header Area -->
+        <div class="p-4 control-panel-bg">
+            <div class="flex items-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 12h2l2-4 2 8 4-12 4 12 2-8 2 4h3" />
+                </svg>
+                <h1 class="text-xl font-bold text-gray-800">Artificial earthquake</h1>
+            </div>
+            <!-- Main Navigation -->
+            <nav class="flex items-center gap-2">
+                <button id="nav-generator" class="nav-btn active">Artificial Earthquake</button>
+                <button id="nav-analysis" class="nav-btn">Sequential Earthquake Analysis</button>
+            </nav>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex-grow flex flex-col lg:flex-row">
+            <!-- View 1: Artificial Earthquake Generator -->
+            <div id="generator-view" class="w-full contents lg:flex">
+                <!-- Control Panel -->
+                <div id="control-panel" class="w-full lg:w-1/3 xl:w-1/4 p-4 control-panel-bg overflow-y-auto">
+                    
+                    <!-- Sequential Event Builder -->
+                    <div class="card p-4 mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-semibold text-gray-800">Sequential Event Builder</h2>
+                            <div class="flex gap-2">
+                                <button id="add-foreshock-btn" class="btn-secondary text-sm font-bold py-1 px-2 rounded-md flex items-center">Add Foreshock</button>
+                                <button id="add-aftershock-btn" class="btn-secondary text-sm font-bold py-1 px-2 rounded-md flex items-center">Add Aftershock</button>
+                            </div>
+                        </div>
+                        <div id="event-tabs-container" class="flex flex-wrap gap-2 mb-4 p-2 bg-gray-100 rounded-md">
+                            <!-- Event tabs will be rendered here -->
+                        </div>
+                        <div id="event-controls-container">
+                            <!-- Controls for the active event will be rendered here -->
+                        </div>
+                    </div>
+
+                    <!-- Waveform Calibration -->
+                    <div class="card p-4 mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-semibold text-gray-800">Waveform Calibration</h2>
+                             <button id="add-calibration-btn" class="btn-primary text-white font-bold py-2 px-4 rounded-md flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                                Add
+                            </button>
+                        </div>
+                        <div id="calibrations-container" class="space-y-3">
+                           <!-- Calibration tabs and controls will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visualization Area -->
+                <div class="flex-1 p-4 lg:p-6 flex flex-col">
+                    <div class="flex-1 card p-4 flex flex-col items-center justify-center">
+                        <div class="w-full flex justify-between items-center mb-2 flex-wrap gap-2">
+                            <h2 class="text-2xl font-bold text-gray-800">Artificial earthquake waveform</h2>
+                            <div class="flex items-center gap-2">
+                                <input type="text" id="export-filename" placeholder="earthquake_waveform" class="rounded-md shadow-sm p-2 text-sm w-40">
+                                <select id="export-filetype" class="rounded-md p-2 text-sm">
+                                    <option value="csv">.csv</option>
+                                    <option value="txt">.txt</option>
+                                </select>
+                                <button id="export-btn" class="btn-secondary font-bold py-2 px-4 rounded-md flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Export Data
+                                </button>
+                                <button id="export-image-btn" class="btn-primary font-bold py-2 px-4 rounded-md flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    Export Image
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-gray-500 mb-4 w-full text-center" id="waveform-summary">Total Duration: 0.0s | Peak Acceleration: 0.00 m/s²</p>
+                        <div class="w-full h-full min-h-[400px] lg:min-h-0">
+                            <canvas id="waveform-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+             <!-- View 2: Sequential Earthquake Analysis -->
+            <div id="analysis-view" class="w-full p-4 lg:p-6 hidden">
+                <div class="max-w-7xl mx-auto w-full">
+                    <!-- New Upload Section -->
+                    <div class="card p-6 mb-6">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4">Upload & Analyze Earthquake Data</h2>
+                        <div id="drop-zone" class="flex flex-col items-center justify-center p-8 rounded-lg text-center cursor-pointer">
+                            <svg class="w-16 h-16 text-gray-400 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l-3.75 3.75M12 9.75l3.75 3.75M3 17.25V6.75A2.25 2.25 0 015.25 4.5h13.5A2.25 2.25 0 0121 6.75v10.5A2.25 2.25 0 0118.75 19.5H5.25A2.25 2.25 0 013 17.25z" />
+                            </svg>
+                            <p class="text-gray-600 font-semibold">Drag & drop files here</p>
+                            <p class="text-gray-500 text-sm mt-1">or click to select files</p>
+                            <p class="text-xs text-gray-400 mt-4">Supported formats: .csv, .txt (two columns: time, acceleration)</p>
+                        </div>
+                        <input type="file" id="file-input" multiple accept=".csv,.txt,text/plain" class="hidden"/>
+                    </div>
+                     <!-- Educational Component -->
+                    <div class="card p-6 mb-6 bg-indigo-50 border-indigo-200">
+                        <h3 class="text-lg font-bold text-indigo-800 mb-2">How Sequential Analysis Works</h3>
+                        <p class="text-indigo-700">This tool analyzes a waveform's energy distribution over time using <strong class="font-semibold">Arias Intensity</strong>. The mainshock is identified as the period where the most significant energy (from 5% to 95%) is released. Events before this period are classified as foreshocks, and events after are aftershocks. This provides a standardized way to segment complex earthquake sequences.</p>
+                    </div>
+
+                    <div id="file-nav-container" class="flex flex-wrap gap-2 mb-4">
+                        <!-- File navigation tabs will be inserted here -->
+                    </div>
+                    <div id="analysis-results-container" class="space-y-8">
+                        <!-- Analysis results will be appended here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- GLOBAL APP STATE ---
+            const generatorView = document.getElementById('generator-view');
+            const analysisView = document.getElementById('analysis-view');
+            const navGeneratorBtn = document.getElementById('nav-generator');
+            const navAnalysisBtn = document.getElementById('nav-analysis');
+
+            // --- VIEW SWITCHING LOGIC ---
+            const switchToGenerator = () => {
+                analysisView.classList.add('hidden');
+                generatorView.classList.remove('hidden');
+                generatorView.classList.add('contents', 'lg:flex');
+                navGeneratorBtn.classList.add('active');
+                navAnalysisBtn.classList.remove('active');
+            };
+
+            const switchToAnalysis = () => {
+                generatorView.classList.add('hidden');
+                generatorView.classList.remove('contents', 'lg:flex');
+                analysisView.classList.remove('hidden');
+                navAnalysisBtn.classList.add('active');
+                navGeneratorBtn.classList.remove('active');
+            };
+
+            navGeneratorBtn.addEventListener('click', switchToGenerator);
+            navAnalysisBtn.addEventListener('click', switchToAnalysis);
+
+            // ===============================================
+            // === ARTIFICIAL EARTHQUAKE GENERATOR MODULE ===
+            // ===============================================
+            (() => {
+                // --- STATE MANAGEMENT ---
+                const defaultState = {
+                    events: [
+                        { id: 'mainshock', type: 'mainshock', duration: 30, tgap: 10, frequency: 1.0, amplitude: 0.1, lineStyle: 'solid' }
+                    ],
+                    calibrations: []
+                };
+                let events = [];
+                let calibrations = [];
+                let activeEventId = 'mainshock';
+                let activeCalibrationId = null;
+                let chartInstance = null;
+                const samplesPerSecond = 50;
+
+                // --- DOM ELEMENTS ---
+                const eventTabsContainer = document.getElementById('event-tabs-container');
+                const eventControlsContainer = document.getElementById('event-controls-container');
+                const calibrationsContainer = document.getElementById('calibrations-container');
+                const addForeshockBtn = document.getElementById('add-foreshock-btn');
+                const addAftershockBtn = document.getElementById('add-aftershock-btn');
+                const addCalibrationBtn = document.getElementById('add-calibration-btn');
+                const exportBtn = document.getElementById('export-btn');
+                const exportImageBtn = document.getElementById('export-image-btn');
+                const waveformSummary = document.getElementById('waveform-summary');
+                const ctx = document.getElementById('waveform-chart').getContext('2d');
+                
+                // --- PERSISTENCE ---
+                const saveStateToLocalStorage = () => {
+                    try {
+                        const state = { events, calibrations };
+                        localStorage.setItem('earthquakeGeneratorState', JSON.stringify(state));
+                    } catch (error) {
+                        console.error("Could not save state to local storage:", error);
+                    }
+                };
+
+                const loadStateFromLocalStorage = () => {
+                    try {
+                        const savedStateJSON = localStorage.getItem('earthquakeGeneratorState');
+                        if (savedStateJSON) {
+                            const savedState = JSON.parse(savedStateJSON);
+                            if (savedState.events && Array.isArray(savedState.events) && savedState.events.length > 0) {
+                                events = savedState.events;
+                                calibrations = savedState.calibrations || [];
+                                if (!events.find(e => e.id === activeEventId)) {
+                                    activeEventId = events.find(e => e.type === 'mainshock')?.id || events[0].id;
+                                }
+                                if(calibrations.length > 0) {
+                                    activeCalibrationId = calibrations[0].id;
+                                }
+                                return;
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Could not load state from local storage:", error);
+                    }
+                    events = JSON.parse(JSON.stringify(defaultState.events));
+                    calibrations = JSON.parse(JSON.stringify(defaultState.calibrations));
+                };
+
+                // --- CORE LOGIC ---
+                const getTimelineEvents = () => {
+                    const timedEvents = [];
+                    let currentTime = 0;
+                    
+                    const sortedEvents = [...events].sort((a, b) => {
+                        const typeOrder = { 'foreshock': 1, 'mainshock': 2, 'aftershock': 3 };
+                        if(typeOrder[a.type] !== typeOrder[b.type]) return typeOrder[a.type] - typeOrder[b.type];
+                        // If same type, maintain original order (approximated by ID)
+                        return a.id > b.id ? 1 : -1;
+                    });
+
+                    sortedEvents.forEach(event => {
+                        const startTime = currentTime + event.tgap;
+                        const endTime = startTime + event.duration;
+                        timedEvents.push({ ...event, startTime, endTime });
+                        currentTime = endTime;
+                    });
+                    return timedEvents;
+                };
+
+                const getWaveformParamsAtTime = (t) => {
+                    const timedEvents = getTimelineEvents();
+                    const activeEvent = timedEvents.find(e => t >= e.startTime && t < e.endTime);
+                    if (activeEvent) {
+                        return { frequency: activeEvent.frequency, amplitude: activeEvent.amplitude };
+                    }
+                    return { frequency: 0, amplitude: 0 }; // Default if in a gap
+                };
+
+                const generateWaveformData = () => {
+                    const labels = [];
+                    const data = [];
+                    let peakAcceleration = 0;
+                    
+                    const timedEvents = getTimelineEvents();
+                    const totalDuration = timedEvents.length > 0 ? Math.max(...timedEvents.map(e => e.endTime)) : 0;
+                    if (totalDuration === 0) {
+                         waveformSummary.textContent = `Total Duration: 0.0s | Peak Acceleration: 0.00 m/s²`;
+                         return {labels: [0], data: [0]};
+                    }
+
+                    const numTotalSamples = Math.ceil(totalDuration * samplesPerSecond);
+
+                    for (let i = 0; i <= numTotalSamples; i++) {
+                        const t = i / samplesPerSecond;
+                        labels.push(t.toFixed(3));
+
+                        let baseFreq = 0;
+                        let baseAmp = 0;
+
+                        const activeEvent = timedEvents.find(e => t >= e.startTime && t < e.endTime);
+                        if (activeEvent) {
+                            baseFreq = activeEvent.frequency;
+                            baseAmp = activeEvent.amplitude;
+                        }
+
+                        const activeCalibration = calibrations.find(c => t >= c.startTime && t < c.endTime);
+                        if (activeCalibration) {
+                            baseFreq = activeCalibration.frequency;
+                            baseAmp = activeCalibration.amplitude;
+                        }
+
+                        const value = baseAmp * Math.sin(2 * Math.PI * baseFreq * t);
+                        data.push(value.toFixed(4));
+                        peakAcceleration = Math.max(peakAcceleration, Math.abs(value));
+                    }
+                    
+                    waveformSummary.textContent = `Total Duration: ${totalDuration.toFixed(1)}s | Peak Acceleration: ${peakAcceleration.toFixed(2)} m/s²`;
+                    return { labels, data };
+                };
+
+                const updateChart = () => {
+                    const { labels, data } = generateWaveformData();
+                    const mainshock = events.find(e => e.id === 'mainshock');
+                    const lineStyleMap = { solid: [], dashed: [10, 5], dotted: [2, 3] };
+                    const borderDash = mainshock ? (lineStyleMap[mainshock.lineStyle] || []) : [];
+
+                    if (chartInstance) {
+                        chartInstance.data.labels = labels;
+                        chartInstance.data.datasets[0].data = data;
+                        chartInstance.data.datasets[0].borderDash = borderDash;
+                        chartInstance.update();
+                    } else {
+                        chartInstance = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels,
+                                datasets: [{
+                                    label: 'Acceleration (m/s²)',
+                                    data,
+                                    borderColor: '#6366f1', /* Indigo 500 */
+                                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                                    borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0.1,
+                                    borderDash: borderDash
+                                }]
+                            },
+                            options: {
+                                responsive: true, maintainAspectRatio: false,
+                                scales: {
+                                    x: { title: { display: true, text: 'Time (s)', color: '#4b5563' }, ticks: { color: '#6b7280' } },
+                                    y: { title: { display: true, text: 'Acceleration (m/s²)', color: '#4b5563' }, ticks: { color: '#6b7280' } }
+                                },
+                                plugins: { legend: { display: false } },
+                                animation: { duration: 0 }
+                            }
+                        });
+                    }
+                };
+
+                const renderUI = () => {
+                    renderTabsAndControls();
+                    renderCalibrations();
+                };
+                
+                const createAdjusterInput = (label, param, value, precision, isSmall = false) => {
+                    const container = document.createElement('div');
+                    const valueStr = typeof value === 'number' ? value.toFixed(precision) : value;
+                    const textSizeClass = isSmall ? 'text-sm' : '';
+
+                    container.innerHTML = `
+                        <label class="block text-sm font-medium text-gray-600 mb-1">${label}</label>
+                        <div class="flex items-center w-full">
+                            <button data-action="decrement" data-param="${param}" class="adjust-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold px-3 py-2 rounded-l-md border border-r-0 border-gray-300 transition">-</button>
+                            <input type="text" data-param="${param}" value="${valueStr}" class="w-full text-center rounded-none border-gray-300 p-2 ${textSizeClass}">
+                            <button data-action="increment" data-param="${param}" class="adjust-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold px-3 py-2 rounded-r-md border border-l-0 border-gray-300 transition">+</button>
+                        </div>
+                    `;
+                    return container;
+                };
+
+                const renderTabsAndControls = () => {
+                    eventTabsContainer.innerHTML = '';
+                    eventControlsContainer.innerHTML = '';
+
+                    const timedEvents = getTimelineEvents();
+                    
+                    timedEvents.forEach((event) => {
+                         let label = '';
+                         if (event.type === 'mainshock') label = 'Mainshock';
+                         else {
+                            const typeEvents = timedEvents.filter(e => e.type === event.type);
+                            const typeIndex = typeEvents.findIndex(e => e.id === event.id);
+                            label = `${event.type.charAt(0).toUpperCase() + event.type.slice(1)} ${typeIndex + 1}`;
+                         }
+                        eventTabsContainer.appendChild(createEventTab(event, label));
+                    });
+
+                    const activeEvent = events.find(e => e.id === activeEventId);
+                    if (activeEvent) {
+                        renderEventControls(activeEvent);
+                    }
+                };
+                
+                const createEventTab = (event, label) => {
+                    const tab = document.createElement('button');
+                    tab.className = `event-tab ${activeEventId === event.id ? 'active' : ''}`;
+                    tab.dataset.id = String(event.id);
+                    tab.innerHTML = `<span>${label}</span>`;
+
+                    if (event.id !== 'mainshock') {
+                        tab.innerHTML += `<span class="remove-btn" data-id="${event.id}">×</span>`;
+                    }
+                    return tab;
+                };
+                
+                const renderEventControls = (event) => {
+                    const isMainshock = event.type === 'mainshock';
+                    const timedEvents = getTimelineEvents();
+                    const eventIndex = timedEvents.findIndex(e => e.id === event.id);
+                    const tgapLabel = eventIndex === 0 ? 'Initial Delay (s)' : 'Tgap (s)';
+
+                    const controlsWrapper = document.createElement('div');
+                    controlsWrapper.innerHTML = `<h3 class="text-md font-semibold mb-3 text-gray-800">${event.type.charAt(0).toUpperCase() + event.type.slice(1)} Settings</h3>`;
+
+                    const grid = document.createElement('div');
+                    grid.className = 'grid grid-cols-2 gap-4';
+
+                    grid.appendChild(createAdjusterInput(tgapLabel, 'tgap', event.tgap, 1));
+                    grid.appendChild(createAdjusterInput('Duration (s)', 'duration', event.duration, 1));
+                    grid.appendChild(createAdjusterInput('Frequency (Hz)', 'frequency', event.frequency, 2));
+                    grid.appendChild(createAdjusterInput('Amplitude (m/s²)', 'amplitude', event.amplitude, 2));
+
+                    if (isMainshock) {
+                        const lineStyleContainer = document.createElement('div');
+                        lineStyleContainer.innerHTML = `
+                            <label for="line-style" class="block text-sm font-medium text-gray-600">Line Style</label>
+                            <select id="line-style" data-param="lineStyle" class="mt-1 block w-full rounded-md p-2">
+                                <option value="solid" ${event.lineStyle === 'solid' ? 'selected' : ''}>Solid</option>
+                                <option value="dashed" ${event.lineStyle === 'dashed' ? 'selected' : ''}>Dashed</option>
+                                <option value="dotted" ${event.lineStyle === 'dotted' ? 'selected' : ''}>Dotted</option>
+                            </select>
+                        `;
+                        grid.appendChild(lineStyleContainer);
+                    }
+                    
+                    controlsWrapper.appendChild(grid);
+                    eventControlsContainer.innerHTML = '';
+                    eventControlsContainer.appendChild(controlsWrapper);
+                };
+
+                const renderCalibrations = () => {
+                    calibrationsContainer.innerHTML = '';
+                    if (calibrations.length === 0) {
+                        calibrationsContainer.innerHTML = `<p class="text-center text-sm text-gray-500">Add calibrations to override waveform in specific time ranges.</p>`;
+                        return;
+                    }
+
+                    const tabBar = document.createElement('div');
+                    tabBar.className = 'flex flex-wrap gap-2 mb-4 p-2 bg-gray-100 rounded-md';
+
+                    calibrations.forEach(cal => {
+                        const tab = document.createElement('button');
+                        tab.className = `event-tab calibration-tab ${activeCalibrationId === cal.id ? 'active' : ''}`;
+                        tab.dataset.id = cal.id;
+                        tab.textContent = `(${cal.startTime}, ${cal.endTime})`;
+                        tabBar.appendChild(tab);
+                    });
+                    calibrationsContainer.appendChild(tabBar);
+
+                    const activeCal = calibrations.find(c => c.id === activeCalibrationId);
+                    if (activeCal) {
+                         const calEl = document.createElement('div');
+                         calEl.className = 'p-3 rounded-md border border-gray-200 bg-gray-50';
+                         calEl.dataset.id = activeCal.id;
+                         calEl.innerHTML = `
+                            <div class="flex justify-between items-center mb-3">
+                                <h3 class="font-semibold text-gray-700 text-sm">Calibration Settings</h3>
+                                <button class="remove-calibration-btn text-gray-400 hover:text-red-500" data-id="${activeCal.id}">
+                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                                </button>
+                            </div>`;
+                        
+                        const grid = document.createElement('div');
+                        grid.className = 'grid grid-cols-2 gap-4';
+
+                        grid.appendChild(createAdjusterInput('Start Time (s)', 'startTime', activeCal.startTime, 1, true));
+                        grid.appendChild(createAdjusterInput('End Time (s)', 'endTime', activeCal.endTime, 1, true));
+                        grid.appendChild(createAdjusterInput('New Freq. (Hz)', 'frequency', activeCal.frequency, 2, true));
+                        grid.appendChild(createAdjusterInput('New Amp. (m/s²)', 'amplitude', activeCal.amplitude, 2, true));
+                        
+                        calEl.appendChild(grid);
+                        calibrationsContainer.appendChild(calEl);
+                    }
+                };
+
+                const handleControlsInput = (e) => {
+                    if (!e.target.matches('input[type="text"], select')) return;
+                    
+                    const activeEvent = events.find(ev => ev.id === activeEventId);
+                    if (!activeEvent) return;
+
+                    const param = e.target.dataset.param;
+                    let value = e.target.value;
+                    
+                    if (e.target.matches('input[type="text"]')) {
+                        const numValue = parseFloat(value);
+                        if (!isNaN(numValue)) {
+                            activeEvent[param] = numValue;
+                        }
+                    } else { // This handles the <select> for lineStyle
+                         activeEvent[param] = value;
+                    }
+                    fullUpdate();
+                };
+
+                const handleAddForeshock = () => {
+                    const newShock = { id: Date.now(), type: 'foreshock', tgap: 10, duration: 10, frequency: 0.8, amplitude: 0.05 };
+                    events.push(newShock);
+                    activeEventId = newShock.id;
+                    fullUpdate();
+                };
+                
+                const handleAddAftershock = () => {
+                    const newShock = { id: Date.now(), type: 'aftershock', tgap: 10, duration: 15, frequency: 1.2, amplitude: 0.07 };
+                    events.push(newShock);
+                    activeEventId = newShock.id;
+                    fullUpdate();
+                };
+                
+                const handleAddCalibration = () => {
+                    const startTime = 0;
+                    const endTime = 5;
+                    const baseParams = getWaveformParamsAtTime(startTime);
+
+                    const newCal = { 
+                        id: Date.now(), 
+                        startTime, 
+                        endTime, 
+                        frequency: baseParams.frequency, 
+                        amplitude: baseParams.amplitude 
+                    };
+                    calibrations.push(newCal);
+                    activeCalibrationId = newCal.id;
+                    fullUpdate();
+                };
+                
+                const handleEventControlsClick = (e) => {
+                    const adjustBtn = e.target.closest('.adjust-btn');
+                    if (!adjustBtn) return;
+
+                    const action = adjustBtn.dataset.action;
+                    const param = adjustBtn.dataset.param;
+                    const activeEvent = events.find(ev => ev.id === activeEventId);
+
+                    if (activeEvent) {
+                        let currentValue = parseFloat(activeEvent[param]);
+                        const step = (param === 'duration' || param === 'tgap') ? 0.1 : 0.01;
+                        if (isNaN(currentValue)) currentValue = 0;
+
+                        let newValue = action === 'increment' ? currentValue + step : currentValue - step;
+
+                        // Constraints
+                        if (param === 'frequency' && newValue < 0.1) newValue = 0.1;
+                        if (param === 'amplitude' && newValue < 0) newValue = 0;
+                        if (param === 'duration' && newValue < 0.1) newValue = 0.1;
+                        if (param === 'tgap' && newValue < 0) newValue = 0;
+
+                        const precision = (param === 'duration' || param === 'tgap') ? 1 : 2;
+                        activeEvent[param] = parseFloat(newValue.toFixed(precision));
+                        fullUpdate();
+                    }
+                };
+
+                const handleCalibrationsInteraction = (e) => {
+                    const tab = e.target.closest('.calibration-tab');
+                    if (tab) {
+                        const id = parseInt(tab.dataset.id);
+                        if (id !== activeCalibrationId) {
+                            activeCalibrationId = id;
+                            renderCalibrations();
+                        }
+                        return;
+                    }
+                    
+                    const calEl = e.target.closest('[data-id]');
+                    if (!calEl) return;
+                    const id = parseInt(calEl.dataset.id);
+
+                    const adjustBtn = e.target.closest('.adjust-btn');
+                    if(adjustBtn) {
+                        const action = adjustBtn.dataset.action;
+                        const param = adjustBtn.dataset.param;
+                        const cal = calibrations.find(c => c.id === id);
+                        
+                        if (cal) {
+                            let currentValue = parseFloat(cal[param]);
+                            const step = (param.includes('Time')) ? 0.1 : 0.01;
+                            if (isNaN(currentValue)) currentValue = 0;
+                            
+                            let newValue = action === 'increment' ? currentValue + step : currentValue - step;
+
+                            if (param.includes('Time') && newValue < 0) newValue = 0;
+                            if (param === 'frequency' && newValue < 0.1) newValue = 0.1;
+                            if (param === 'amplitude' && newValue < 0) newValue = 0;
+
+                            const precision = (param.includes('Time')) ? 1 : 2;
+                            cal[param] = parseFloat(newValue.toFixed(precision));
+                            fullUpdate();
+                        }
+                        return;
+                    }
+
+                    if (e.target.closest('.remove-calibration-btn')) {
+                        calibrations = calibrations.filter(c => c.id !== id);
+                        if (activeCalibrationId === id) {
+                            activeCalibrationId = calibrations.length > 0 ? calibrations[0].id : null;
+                        }
+                        fullUpdate();
+                    } 
+                    else if (e.target.matches('input') && e.type === 'change') {
+                         const cal = calibrations.find(c => c.id === id);
+                         const param = e.target.dataset.param;
+                         const value = parseFloat(e.target.value);
+                         if(cal && !isNaN(value)) {
+                            cal[param] = value;
+                         }
+                        fullUpdate();
+                    }
+                }
+
+                const handleTabClick = (e) => {
+                    const tab = e.target.closest('.event-tab');
+                    const removeBtn = e.target.closest('.remove-btn');
+
+                    if (removeBtn) {
+                        e.stopPropagation();
+                        const idToRemove = parseInt(removeBtn.dataset.id);
+                        events = events.filter(shock => shock.id !== idToRemove);
+                        if (activeEventId === idToRemove) {
+                            activeEventId = 'mainshock';
+                        }
+                        fullUpdate();
+                    } else if (tab) {
+                        const newActiveIdStr = tab.dataset.id;
+                        const newActiveId = newActiveIdStr === 'mainshock' ? 'mainshock' : parseInt(newActiveIdStr);
+                        if (newActiveId !== activeEventId) {
+                            activeEventId = newActiveId;
+                            renderTabsAndControls();
+                        }
+                    }
+                };
+
+                const handleExportData = () => {
+                    const { labels, data } = generateWaveformData();
+                    if (labels.length === 0) return;
+                    
+                    const filenameInput = document.getElementById('export-filename');
+                    const filetypeSelector = document.getElementById('export-filetype');
+                    let baseFilename = filenameInput.value.trim().replace(/\s+/g, '_') || 'earthquake_waveform';
+                    const fileExtension = filetypeSelector.value;
+                    const fullFilename = `${baseFilename}.${fileExtension}`;
+                    const mimeType = fileExtension === 'csv' ? 'text/csv;charset=utf-8;' : 'text/plain;charset=utf-8;';
+
+                    let fileContent = "Time (s),Acceleration (m/s²)\n";
+                    labels.forEach((label, index) => { fileContent += `${label},${data[index]}\n`; });
+                    
+                    const blob = new Blob([fileContent], { type: mimeType });
+                    const link = document.createElement("a");
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute("href", url);
+                    link.setAttribute("download", fullFilename);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                };
+
+                const handleExportImage = () => {
+                    if (!chartInstance) {
+                        console.error("Chart instance not found for export.");
+                        return;
+                    }
+                    const filenameInput = document.getElementById('export-filename');
+                    const baseFilename = filenameInput.value.trim().replace(/\s+/g, '_') || 'artificial_waveform';
+                    const fullFilename = `${baseFilename}.png`;
+
+                    const imageLink = document.createElement('a');
+                    imageLink.download = fullFilename;
+                    imageLink.href = chartInstance.toBase64Image('image/png', 1);
+                    
+                    document.body.appendChild(imageLink);
+                    imageLink.click();
+                    document.body.removeChild(imageLink);
+                };
+
+                const fullUpdate = () => {
+                    renderUI();
+                    updateChart();
+                    saveStateToLocalStorage();
+                };
+                
+                // --- INITIALIZATION ---
+                loadStateFromLocalStorage();
+                fullUpdate();
+
+                // --- EVENT LISTENERS ---
+                addForeshockBtn.addEventListener('click', handleAddForeshock);
+                addAftershockBtn.addEventListener('click', handleAddAftershock);
+                addCalibrationBtn.addEventListener('click', handleAddCalibration);
+                eventTabsContainer.addEventListener('click', handleTabClick);
+                eventControlsContainer.addEventListener('change', handleControlsInput);
+                eventControlsContainer.addEventListener('click', handleEventControlsClick);
+                calibrationsContainer.addEventListener('change', handleCalibrationsInteraction);
+                calibrationsContainer.addEventListener('click', handleCalibrationsInteraction);
+                exportBtn.addEventListener('click', handleExportData);
+                exportImageBtn.addEventListener('click', handleExportImage);
+            })();
+
+            // ===========================================
+            // === SEQUENTIAL ANALYSIS MODULE ===
+            // ===========================================
+            (() => {
+                const fileInput = document.getElementById('file-input');
+                const dropZone = document.getElementById('drop-zone');
+                const resultsContainer = document.getElementById('analysis-results-container');
+                const fileNavContainer = document.getElementById('file-nav-container');
+                let analysisCharts = {}; // To keep track of chart instances
+
+                // --- Drag and Drop Logic ---
+                dropZone.addEventListener('click', () => fileInput.click());
+                dropZone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('drag-over');
+                });
+                dropZone.addEventListener('dragleave', () => {
+                    dropZone.classList.remove('drag-over');
+                });
+                dropZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('drag-over');
+                    const files = e.dataTransfer.files;
+                    if (files.length) {
+                        handleFiles(files);
+                    }
+                });
+                fileInput.addEventListener('change', (e) => {
+                    handleFiles(e.target.files);
+                });
+
+                const handleFiles = (files) => {
+                    resultsContainer.innerHTML = '';
+                    fileNavContainer.innerHTML = '';
+                    // Clear old chart instances
+                    Object.values(analysisCharts).forEach(chart => chart.destroy());
+                    analysisCharts = {};
+                    
+                    if (files.length > 1) {
+                         Array.from(files).forEach((file, index) => {
+                            const navButton = document.createElement('button');
+                            navButton.className = `nav-btn ${index === 0 ? 'active' : ''}`;
+                            navButton.textContent = file.name;
+                            navButton.dataset.index = index;
+                            fileNavContainer.appendChild(navButton);
+                        });
+                    }
+
+                    Array.from(files).forEach((file, index) => {
+                        if (!['text/csv', 'text/plain'].includes(file.type) && !file.name.endsWith('.csv') && !file.name.endsWith('.txt')) {
+                            renderResult(file.name, null, 'Invalid file type.', index);
+                            return;
+                        }
+
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            const { time, acceleration } = parseFileContent(event.target.result);
+                            if (time.length < 2) {
+                                renderResult(file.name, null, 'Could not parse data. Ensure it has at least two columns of numeric data.');
+                                return;
+                            }
+                            const analysisResult = analyzeWaveform(time, acceleration);
+                            renderResult(file.name, analysisResult, null, index);
+                        };
+                        reader.readAsText(file);
+                    });
+                }
+
+                const parseFileContent = (content) => {
+                    const lines = content.split('\n').filter(line => line.trim() !== '' && !isNaN(line.trim().split(/[\s,]+/)[0]));
+                    const time = [];
+                    const acceleration = [];
+                    lines.forEach(line => {
+                        const parts = line.trim().split(/[\s,]+/);
+                        if (parts.length >= 2) {
+                            const t = parseFloat(parts[0]);
+                            const a = parseFloat(parts[1]);
+                            if (!isNaN(t) && !isNaN(a)) {
+                                time.push(t);
+                                acceleration.push(a);
+                            }
+                        }
+                    });
+                    return { time, acceleration };
+                };
+
+                const analyzeWaveform = (time, acceleration) => {
+                    if (time.length < 2) return null;
+
+                    let pga = 0;
+                    acceleration.forEach(a => { pga = Math.max(pga, Math.abs(a)); });
+                    
+                    const g = 9.81;
+                    const ariasIntensity = [0];
+                    for (let i = 1; i < acceleration.length; i++) {
+                        const dt = time[i] - time[i - 1];
+                        const a_sq = Math.pow(acceleration[i], 2);
+                        const intensityIncrement = (Math.PI / (2 * g)) * a_sq * dt;
+                        ariasIntensity.push(ariasIntensity[i - 1] + intensityIncrement);
+                    }
+                    const totalIntensity = ariasIntensity[ariasIntensity.length - 1];
+
+                    const i5 = totalIntensity * 0.05;
+                    const i95 = totalIntensity * 0.95;
+                    
+                    const startIndex = ariasIntensity.findIndex(i => i >= i5);
+                    const endIndex = ariasIntensity.findIndex(i => i >= i95);
+                    
+                    const mainshockStartTime = time[startIndex] || time[0];
+                    const mainshockEndTime = time[endIndex] || time[time.length - 1];
+
+                    return {
+                        pga,
+                        totalIntensity,
+                        foreshock: [time[0], mainshockStartTime],
+                        mainshock: [mainshockStartTime, mainshockEndTime],
+                        aftershock: [mainshockEndTime, time[time.length - 1]],
+                        fullData: { time, acceleration, ariasIntensity }
+                    };
+                };
+                
+                const createTooltip = (text) => {
+                    return `
+                        <div class="tooltip-container">
+                            <svg class="w-4 h-4 text-gray-400 inline-block ml-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                            </svg>
+                            <span class="tooltip-text">${text}</span>
+                        </div>
+                    `;
+                }
+
+                const renderResult = (filename, result, error, index) => {
+                    const resultWrapper = document.createElement('div');
+                    resultWrapper.id = `result-card-${index}`;
+                    if (index > 0) {
+                        resultWrapper.classList.add('hidden');
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = 'card overflow-hidden';
+                    
+                    if (error) {
+                        card.innerHTML = `<div class="p-4"><h3 class="font-bold text-lg text-red-600">${filename}</h3><p class="text-gray-600">${error}</p></div>`;
+                        resultWrapper.appendChild(card);
+                        resultsContainer.appendChild(resultWrapper);
+                        return;
+                    }
+                    
+                    const pgaTooltip = 'Peak Ground Acceleration: The maximum absolute acceleration recorded.';
+                    const ariasTooltip = 'Arias Intensity: A measure of the total energy of the ground motion.';
+                    const durationTooltip = (name) => `The time range identified as the ${name}, based on energy release.`;
+
+                    card.innerHTML = `
+                        <div class="p-6 bg-gray-50 border-b border-gray-200">
+                           <h3 class="font-bold text-xl text-gray-800">${filename}</h3>
+                        </div>
+                        <div class="p-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                                <div class="bg-gray-100 p-3 rounded-md">
+                                    <p class="text-sm font-medium text-gray-500">PGA ${createTooltip(pgaTooltip)}</p>
+                                    <p class="text-2xl font-semibold text-indigo-600">${result.pga.toFixed(3)} <span class="text-lg font-normal text-gray-500">m/s²</span></p>
+                                </div>
+                                <div class="bg-gray-100 p-3 rounded-md">
+                                    <p class="text-sm font-medium text-gray-500">Foreshock ${createTooltip(durationTooltip('foreshock'))}</p>
+                                    <p class="text-lg font-semibold text-gray-700">${result.foreshock[0].toFixed(2)}s - ${result.foreshock[1].toFixed(2)}s</p>
+                                </div>
+                                <div class="bg-gray-100 p-3 rounded-md">
+                                    <p class="text-sm font-medium text-gray-500">Mainshock ${createTooltip(durationTooltip('mainshock'))}</p>
+                                    <p class="text-lg font-semibold text-gray-700">${result.mainshock[0].toFixed(2)}s - ${result.mainshock[1].toFixed(2)}s</p>
+                                </div>
+                                <div class="bg-gray-100 p-3 rounded-md">
+                                    <p class="text-sm font-medium text-gray-500">Aftershock ${createTooltip(durationTooltip('aftershock'))}</p>
+                                    <p class="text-lg font-semibold text-gray-700">${result.aftershock[0].toFixed(2)}s - ${result.aftershock[1].toFixed(2)}s</p>
+                                </div>
+                            </div>
+                            
+                            <div class="border-t border-gray-200 pt-6">
+                                <!-- Acceleration Chart Section -->
+                                <div class="mb-8">
+                                    <div class="flex justify-between items-center mb-4">
+                                        <h4 class="text-lg font-semibold text-gray-700">Acceleration Waveform</h4>
+                                        <button class="export-analysis-image-btn btn-secondary text-sm py-1 px-3 rounded-md flex items-center" data-chart-type="accel" data-index="${index}" data-filename="${filename}">
+                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            Export Image
+                                        </button>
+                                    </div>
+                                    <div class="w-full h-80">
+                                        <canvas id="accel-chart-${index}"></canvas>
+                                    </div>
+                                </div>
+                                <!-- Arias Intensity Chart Section -->
+                                <div>
+                                    <div class="flex justify-between items-center mb-4">
+                                        <h4 class="text-lg font-semibold text-gray-700">Arias Intensity Analysis</h4>
+                                        <button class="export-analysis-image-btn btn-secondary text-sm py-1 px-3 rounded-md flex items-center" data-chart-type="arias" data-index="${index}" data-filename="${filename}">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            Export Image
+                                        </button>
+                                    </div>
+                                    <div class="w-full h-96">
+                                        <canvas id="arias-chart-${index}"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    resultWrapper.appendChild(card);
+                    resultsContainer.appendChild(resultWrapper);
+                    
+                    // --- Create Charts ---
+                    createAccelChart(index, result);
+                    createAriasChart(index, result);
+                };
+                
+                const createAccelChart = (index, result) => {
+                    const ctx = document.getElementById(`accel-chart-${index}`).getContext('2d');
+                    analysisCharts[`accel-${index}`] = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: result.fullData.time,
+                            datasets: [{
+                                label: 'Acceleration',
+                                data: result.fullData.acceleration,
+                                borderColor: '#312e81', /* Indigo 900 */
+                                borderWidth: 1,
+                                pointRadius: 0,
+                                tension: 0.1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                annotation: {
+                                    annotations: {
+                                        foreshock: { type: 'box', xMin: result.foreshock[0], xMax: result.foreshock[1], backgroundColor: 'rgba(99, 102, 241, 0.1)', borderColor: 'transparent' },
+                                        mainshock: { type: 'box', xMin: result.mainshock[0], xMax: result.mainshock[1], backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'transparent' },
+                                        aftershock: { type: 'box', xMin: result.aftershock[0], xMax: result.aftershock[1], backgroundColor: 'rgba(249, 115, 22, 0.1)', borderColor: 'transparent' }
+                                    }
+                                }
+                            },
+                             scales: {
+                                x: { title: { display: true, text: 'Time (s)' } },
+                                y: { title: { display: true, text: 'Acceleration (m/s²)' } }
+                            }
+                        }
+                    });
+                };
+                
+                const createAriasChart = (index, result) => {
+                     const ctx = document.getElementById(`arias-chart-${index}`).getContext('2d');
+                     if (!ctx) return; // Exit if canvas not found
+                     analysisCharts[`arias-${index}`] = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: result.fullData.time,
+                            datasets: [{
+                                label: 'Arias Intensity',
+                                data: result.fullData.ariasIntensity,
+                                borderColor: '#059669', /* Emerald 600 */
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                fill: true,
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                tension: 0.2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                annotation: {
+                                    annotations: {
+                                        i5: { 
+                                            type: 'line', 
+                                            yMin: result.totalIntensity * 0.05, 
+                                            yMax: result.totalIntensity * 0.05, 
+                                            borderColor: '#dc2626', /* Red 600 */
+                                            borderWidth: 1.5,
+                                            borderDash: [8, 4], 
+                                            label: { 
+                                                content: '5% Energy', 
+                                                enabled: true, 
+                                                position: 'start',
+                                                backgroundColor: 'rgba(220, 38, 38, 0.8)',
+                                                font: { weight: 'bold' },
+                                                color: 'white',
+                                                xAdjust: 10,
+                                                yAdjust: -10,
+                                                padding: 4,
+                                                borderRadius: 4,
+                                            } 
+                                        },
+                                        i95: { 
+                                            type: 'line', 
+                                            yMin: result.totalIntensity * 0.95, 
+                                            yMax: result.totalIntensity * 0.95, 
+                                            borderColor: '#dc2626', /* Red 600 */
+                                            borderWidth: 1.5,
+                                            borderDash: [8, 4], 
+                                            label: { 
+                                                content: '95% Energy', 
+                                                enabled: true, 
+                                                position: 'start',
+                                                backgroundColor: 'rgba(220, 38, 38, 0.8)',
+                                                font: { weight: 'bold' },
+                                                color: 'white',
+                                                xAdjust: 10,
+                                                yAdjust: 10,
+                                                padding: 4,
+                                                borderRadius: 4,
+                                            } 
+                                        },
+                                    }
+                                }
+                            },
+                             scales: {
+                                x: { 
+                                    title: { 
+                                        display: true, 
+                                        text: 'Time (s)',
+                                        font: { size: 14 },
+                                        color: '#374151'
+                                    },
+                                    grid: {
+                                        color: '#e5e7eb'
+                                    } 
+                                },
+                                y: { 
+                                    title: { 
+                                        display: true, 
+                                        text: 'Arias Intensity (m/s)',
+                                        font: { size: 14 },
+                                        color: '#374151'
+                                    },
+                                    grid: {
+                                        color: '#e5e7eb'
+                                    } 
+                                }
+                            },
+                            layout: {
+                                padding: {
+                                    top: 20,
+                                    right: 20,
+                                    bottom: 10,
+                                    left: 10
+                                }
+                            }
+                        }
+                    });
+                };
+
+                const handleAnalysisImageExport = (e) => {
+                    const button = e.target.closest('.export-analysis-image-btn');
+                    if (!button) return;
+
+                    const chartType = button.dataset.chartType;
+                    const index = button.dataset.index;
+                    const filename = button.dataset.filename || 'chart';
+                    
+                    const chartKey = `${chartType}-${index}`;
+                    const chart = analysisCharts[chartKey];
+
+                    if (!chart) {
+                        console.error(`Chart instance for ${chartKey} not found.`);
+                        return;
+                    }
+
+                    const baseFilename = filename.replace(/\.[^/.]+$/, ""); // remove extension
+                    const fullFilename = `${baseFilename}_${chartType}_analysis.png`;
+
+                    const imageLink = document.createElement('a');
+                    imageLink.download = fullFilename;
+                    imageLink.href = chart.toBase64Image('image/png', 1);
+
+                    document.body.appendChild(imageLink);
+                    imageLink.click();
+                    document.body.removeChild(imageLink);
+                };
+
+                fileNavContainer.addEventListener('click', (e) => {
+                    if (e.target.matches('.nav-btn')) {
+                        const targetIndex = e.target.dataset.index;
+
+                        // Update active state for nav buttons
+                        fileNavContainer.querySelectorAll('.nav-btn').forEach(btn => {
+                            btn.classList.toggle('active', btn.dataset.index === targetIndex);
+                        });
+
+                        // Show/hide result cards
+                        resultsContainer.querySelectorAll('[id^="result-card-"]').forEach(card => {
+                            card.classList.toggle('hidden', card.id !== `result-card-${targetIndex}`);
+                        });
+                    }
+                });
+                
+                resultsContainer.addEventListener('click', handleAnalysisImageExport);
+
+            })();
+        });
+    </script>
+</body>
+</html>
+

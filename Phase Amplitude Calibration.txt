@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amplitude Calibration</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/1.4.0/chartjs-plugin-annotation.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Light Theme */
+            --bg-main: #F9FAFB;      /* gray-50 */
+            --bg-card: #FFFFFF;      /* white */
+            --bg-subtle: #F3F4F6;      /* gray-100 */
+            --bg-hover-translucent: rgba(229, 231, 235, 0.5);
+            --header-bg: rgba(249, 250, 251, 0.75);
+            --border-color: #E5E7EB; /* gray-200 */
+            --border-color-hover: #D1D5DB; /* gray-300 */
+            --primary-accent: #1D4ED8; /* blue-700 */
+            --primary-accent-hover: #1E40AF; /* blue-800 */
+            --secondary-accent: #4338CA; /* indigo-700 */
+            --text-primary: #1F2937; /* gray-800 */
+            --text-secondary: #4B5563; /* gray-600 */
+            --success: rgba(22, 163, 74, 0.9);
+            --error: rgba(220, 38, 38, 0.9);
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --radial-bg: #E5E7EB;      /* gray-200 */
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            background-image: radial-gradient(var(--radial-bg) 1px, transparent 0);
+            background-size: 40px 40px;
+            margin: 0;
+            padding: 0;
+        }
+        
+        h1, h2, h3, .font-display {
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            border-color: var(--primary-accent);
+            box-shadow: 0 0 25px rgba(29, 78, 216, 0.2);
+        }
+        
+        .btn {
+            transition: all 0.2s ease-out;
+            transform-style: preserve-3d;
+            position: relative;
+            outline: none;
+        }
+        .btn:focus-visible {
+            box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.4);
+        }
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn-primary { 
+            background-image: linear-gradient(45deg, var(--primary-accent) 0%, var(--secondary-accent) 100%);
+            color: white;
+            box-shadow: 0 2px 10px rgba(29, 78, 216, 0.3);
+        }
+        .btn-primary:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(67, 56, 202, 0.4);
+        }
+        .btn-primary:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 10px rgba(29, 78, 216, 0.3);
+        }
+        .btn-primary:disabled { 
+            background: var(--border-color);
+            color: var(--text-secondary);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-subtle);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+        .btn-secondary:hover {
+            background-color: var(--border-color);
+            border-color: var(--border-color-hover);
+        }
+        
+        .form-input, .form-select {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color-hover);
+            color: var(--text-primary);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--primary-accent);
+            box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.3);
+        }
+        .form-input[readonly] {
+            background-color: var(--bg-subtle);
+            cursor: not-allowed;
+        }
+        .form-input.manual-factor {
+             border-color: var(--border-color-hover);
+        }
+        .form-input.manual-factor:focus {
+             border-color: var(--secondary-accent);
+             box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.3);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%;
+          background: var(--primary-accent); cursor: pointer; border: 2px solid var(--bg-card);
+          box-shadow: 0 0 0 2px var(--primary-accent);
+        }
+        input[type="range"]::-moz-range-thumb {
+          width: 16px; height: 16px; border-radius: 50%;
+          background: var(--primary-accent); cursor: pointer; border: 2px solid var(--bg-card);
+          box-shadow: 0 0 0 2px var(--primary-accent);
+        }
+        
+        .tab-btn {
+            background-color: transparent; border: 1px solid transparent;
+            border-bottom-color: var(--border-color); color: var(--text-secondary);
+            position: relative; transition: all 0.3s ease;
+        }
+        .tab-btn.active {
+            color: var(--primary-accent); border-color: var(--border-color);
+            border-bottom-color: transparent; background-color: var(--bg-card);
+        }
+        .tab-btn:not(.active):hover {
+            background-color: var(--bg-hover-translucent); color: var(--text-primary);
+        }
+        .tab-content {
+            display: none; border: 1px solid var(--border-color); background-color: var(--bg-card);
+        }
+        .tab-content.active { display: block; }
+
+        .notification {
+            position: fixed; bottom: 1.5rem; right: 1.5rem; padding: 1rem 1.5rem;
+            border-radius: 0.5rem; color: white; z-index: 100;
+            display: none; animation: slideIn 0.5s ease-out forwards;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(0,0,0,0.1); backdrop-filter: blur(5px);
+        }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .notification.success { background-color: var(--success); }
+        .notification.error { background-color: var(--error); }
+
+        .collapsible-content { max-height: 0; overflow: hidden; transition: max-height 0.4s ease-in-out; }
+        .collapsible-content.open { max-height: 2000px; }
+        .collapsible-icon { transition: transform 0.3s ease; }
+        .collapsible-icon.open { transform: rotate(180deg); }
+        
+        .themed-header {
+            background-color: var(--header-bg);
+            border-color: var(--border-color);
+        }
+
+        .dashboard-metric {
+            background-color: var(--bg-subtle);
+            border: 1px solid var(--border-color);
+        }
+        .chart-bg {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+        }
+        .controls-bg {
+            background-color: var(--bg-subtle);
+            border: 1px solid var(--border-color);
+        }
+        .prose code { color: #be123c; }
+        .prose code.text-green-400 { color: #15803d; }
+        .prose code.text-yellow-400 { color: #b45309; }
+        .prose code.text-rose-400 { color: #be123c; }
+
+        .btn-layer { @apply flex-1 p-2 rounded-md transition-colors text-xs font-semibold }
+        .reset-btn { @apply ml-2 px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs transition-colors }
+        .pga-segment { border: 2px solid #f59e0b !important; background-color: rgba(245, 158, 11, 0.15) !important; box-shadow: 0 0 15px rgba(245, 158, 11, 0.4) !important; position: relative; }
+        .pga-badge { position: absolute; top: -10px; right: 10px; background-color: #f59e0b; color: #000; font-weight: bold; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; z-index: 10; display: flex; align-items: center; gap: 4px; }
+        .pga-pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .auto-divide-btn { @apply ml-2 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-sm transition-colors }
+        
+        /* --- Enhanced Analysis Mode Button Styles --- */
+        .analysis-mode-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+            font-weight: 600;
+            border-radius: 0.375rem;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-card);
+            color: var(--text-secondary);
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .analysis-mode-btn:hover:not(.active) {
+            border-color: var(--primary-accent);
+            color: var(--primary-accent);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+        .analysis-mode-btn.active {
+            background-color: var(--primary-accent);
+            border-color: var(--primary-accent-hover);
+            color: var(--bg-card);
+            text-shadow: none;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+            transform: translateY(1px);
+        }
+        .analysis-mode-btn:focus-visible {
+            outline: 2px solid var(--primary-accent);
+            outline-offset: 2px;
+        }
+
+        /* --- Enhanced Button Styles --- */
+        .control-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1rem; /* Increased size */
+            font-size: 1rem; /* Increased size */
+            font-weight: 600;
+            line-height: 1.5;
+            border-radius: 0.5rem;
+            border: none;
+            color: white;
+            cursor: pointer;
+            position: relative;
+            text-shadow: 0 -1px 0 rgba(0,0,0,0.2);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1), inset 0 1px 1px rgba(255,255,255,0.1);
+            transition: transform 0.15s ease-out, box-shadow 0.15s ease-out, background-color 0.15s;
+        }
+        .control-btn i {
+            transition: transform 0.2s ease-in-out;
+        }
+        .control-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2), inset 0 1px 1px rgba(255,255,255,0.1);
+        }
+        .control-btn:hover i {
+            transform: scale(1.1) rotate(-5deg);
+        }
+        .control-btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 0 1px rgba(0,0,0,0.1), inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .control-btn:focus-visible {
+            outline: 2px solid var(--primary-accent);
+            outline-offset: 2px;
+        }
+        .btn-confirm {
+            background-color: #059669; /* emerald-600 */
+        }
+        .btn-confirm:hover {
+            background-color: #047857; /* emerald-700 */
+        }
+        .btn-reset {
+            background-color: #e11d48; /* rose-600 */
+        }
+        .btn-reset:hover {
+            background-color: #be123c; /* rose-700 */
+        }
+        /* --- End Enhanced Button Styles --- */
+
+        .full-width-container { width: 100%; max-width: 100%; padding-left: 1rem; padding-right: 1rem; }
+        @media (min-width: 640px) { .full-width-container { padding-left: 1.5rem; padding-right: 1.5rem; } }
+        @media (min-width: 1024px) { .full-width-container { padding-left: 2rem; padding-right: 2rem; } }
+        @media (min-width: 1280px) { .full-width-container { padding-left: 2.5rem; padding-right: 2.5rem; } }
+        @media (min-width: 1536px) { .full-width-container { padding-left: 3rem; padding-right: 3rem; } }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="themed-header sticky top-0 z-50 backdrop-blur-lg border-b">
+        <div class="full-width-container py-4 flex items-center gap-4">
+            <svg class="h-10 w-10 text-blue-600" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 12H5L8 3L16 21L19 12H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <h1 class="text-3xl font-bold uppercase text-gray-800">Amplitude Calibration</h1>
+        </div>
+    </header>
+
+    <main class="full-width-container py-6 space-y-8">
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <section id="control-panel" class="card p-6 rounded-lg">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center border border-blue-200">
+                        <i class="fas fa-sliders-h text-2xl text-blue-600"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-semibold">Controls</h2>
+                        <p class="text-sm text-secondary">Configure & Upload Data</p>
+                    </div>
+                </div>
+                
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-secondary mb-2">1. Select Analysis Mode</label>
+                        <div class="flex items-center gap-2 rounded-lg p-1 bg-gray-100">
+                            <button id="mode-segment-average" class="analysis-mode-btn w-full"><i class="fas fa-layer-group mr-2"></i>Segment & Average</button>
+                            <button id="mode-direct-scaling" class="analysis-mode-btn w-full"><i class="fas fa-compress-arrows-alt mr-2"></i>Direct Scaling</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="time-interval" class="block text-sm font-medium text-secondary mb-2">2. Set Time Interval (s)</label>
+                        <input type="number" id="time-interval" value="0.01" step="0.001" class="form-input w-full rounded-md">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-secondary mb-2">3. Upload Data</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <input type="file" id="initial-file-input" class="hidden" accept=".txt,.csv">
+                                <button id="upload-initial" class="btn w-full text-left p-3 rounded-md transition-colors border border-gray-300 hover:border-blue-500 hover:bg-blue-50">
+                                    <i class="fas fa-file-waveform mr-2 text-gray-500"></i>Seed Accel.
+                                </button>
+                            </div>
+                            <div>
+                                <input type="file" id="numerical-file-input" class="hidden" accept=".txt,.csv">
+                                <button id="upload-numerical" class="btn w-full text-left p-3 rounded-md transition-colors border border-gray-300 hover:border-indigo-500 hover:bg-indigo-50">
+                                    <i class="fas fa-file-csv mr-2 text-gray-500"></i>Numerical Accel.
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                         <label class="block text-sm font-medium text-secondary mb-2">4. Confirm & Reset</label>
+                        <div class="flex gap-4">
+                            <button id="reset-btn" class="control-btn btn-reset"><i class="fas fa-redo mr-2"></i>Reset</button>
+                            <button id="confirm-btn" class="control-btn btn-confirm"><i class="fas fa-check-circle mr-2"></i>Confirm</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="sine-wave-generator" class="card p-6 rounded-lg">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center border border-indigo-200">
+                        <i class="fas fa-wave-square text-2xl text-indigo-600"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-semibold">Sine Wave Generator</h2>
+                        <p class="text-sm text-secondary">Generate Example Data (Optional)</p>
+                    </div>
+                </div>
+                 <div class="space-y-4">
+                    <div>
+                        <label for="seed-amplitude" class="block text-sm font-medium text-secondary mb-2">Seed Wave Amplitude: <span id="seed-amplitude-value" class="font-mono text-xs text-blue-700">0.2</span></label>
+                        <input type="range" id="seed-amplitude" min="0.1" max="1.0" step="0.01" value="0.2" class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-gray-200">
+                    </div>
+                    <div>
+                        <label for="numerical-amplitude" class="block text-sm font-medium text-secondary mb-2">Numerical Wave Amplitude: <span id="numerical-amplitude-value" class="font-mono text-xs text-indigo-700">0.4</span></label>
+                        <input type="range" id="numerical-amplitude" min="0.1" max="2.0" step="0.01" value="0.4" class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-gray-200">
+                    </div>
+                    <div>
+                        <label for="frequency-input" class="block text-sm font-medium text-secondary mb-2">Frequency (Hz): <span id="frequency-value" class="font-mono text-xs text-purple-700">1.0</span></label>
+                        <input type="range" id="frequency-input" min="0.1" max="5.0" step="0.1" value="1.0" class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-gray-200">
+                    </div>
+                    <button id="generate-sine-waves-btn" class="btn btn-primary w-full px-6 py-3 rounded-md font-semibold flex items-center justify-center gap-3"><i class="fas fa-play-circle"></i>Generate Sine Waves</button>
+                    <button id="export-sine-wave-btn" class="btn btn-secondary w-full px-6 py-2 mt-2 rounded-md font-semibold flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed" disabled><i class="fas fa-file-export"></i>Export Sine Wave Seed</button>
+                </div>
+            </section>
+        </div>
+        
+        <section id="data-dashboard" class="card p-6 rounded-lg hidden">
+             <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 bg-emerald-50 rounded-lg flex items-center justify-center border border-emerald-200">
+                    <i class="fas fa-tachometer-alt text-2xl text-emerald-600"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-semibold">Dashboard</h2>
+                    <p class="text-sm text-secondary">Comprehensive Input Data Metrics</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-center">
+                <div class="dashboard-metric p-4 rounded-md">
+                    <label class="block text-sm text-secondary">Total Steps</label>
+                    <p id="total-steps" class="text-2xl font-display text-blue-600">0</p>
+                </div>
+                 <div class="dashboard-metric p-4 rounded-md">
+                    <label class="block text-sm text-secondary">Duration</label>
+                    <p id="duration-value" class="text-2xl font-display text-indigo-600">0.00 s</p>
+                </div>
+                <div class="dashboard-metric p-4 rounded-md">
+                    <label class="block text-sm text-secondary">PGA (Seed Accel)</label>
+                    <p id="pga-seed-value" class="text-2xl font-display text-purple-600">0.00 g</p>
+                </div>
+                <div class="dashboard-metric p-4 rounded-md">
+                    <label class="block text-sm text-secondary">PGA (Numerical Accel)</label>
+                    <p id="pga-numerical-value" class="text-2xl font-display text-teal-600">0.00 g</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="card p-6 rounded-lg">
+            <h2 class="text-2xl font-semibold mb-2">Period Analysis & Calculation Logic</h2>
+            <p class="text-sm text-secondary mb-6">Define segments per period and review the attenuation logic.</p>
+
+            <div class="mb-6 border rounded-lg bg-gray-50">
+                <div class="collapsible-header flex justify-between items-center p-4 cursor-pointer" id="collapsible-header">
+                    <h3 class="font-semibold text-lg text-blue-700 font-display">Bedrock Acceleration Calculation Logic</h3>
+                    <i class="fas fa-chevron-down collapsible-icon text-secondary" id="collapsible-icon"></i>
+                </div>
+                <div class="collapsible-content" id="collapsible-content">
+                    <div class="p-4 border-t prose max-w-none">
+                        <p>The calculation method depends on the selected <strong>Analysis Mode</strong>. The logic has been updated to allow bedrock acceleration to exceed seed acceleration, modeling potential soil amplification effects.</p>
+                        <h4 class="text-lg font-semibold mt-4 mb-2 text-amber-700">Mode 1: Segment & Average</h4>
+                        <p>This mode requires both <strong>Seed</strong> and <strong>Numerical</strong> acceleration data. The <code>Effective Factor</code> for each segment represents the soil's transfer function (amplification or attenuation). The final bedrock acceleration is calculated by applying the inverse of this effect to the numerical (surface) acceleration.</p>
+                        
+                        <p><strong>Bedrock Acceleration Logic (per step):</strong><br>
+                        <code>Bedrock Accel. = Numerical Accel. / Effective Factor</code></p>
+                        <p>This single formula correctly handles both scenarios:</p>
+                        <ul class="list-disc pl-5 mt-2 space-y-2">
+                            <li>If <strong>Effective Factor > 1</strong> (amplification), the bedrock acceleration will be scaled down from the numerical acceleration.</li>
+                            <li>If <strong>Effective Factor < 1</strong> (attenuation), the bedrock acceleration will be scaled up from the numerical acceleration.</li>
+                            <li>If <strong>Effective Factor is Negative</strong> or near-zero, a fallback value is used to ensure stability.</li>
+                        </ul>
+                        
+                        <h4 class="text-lg font-semibold mt-6 mb-2 text-indigo-700">Mode 2: Direct Scaling</h4>
+                        <p>This mode provides two layers of control: broad adjustments across four main periods, plus an additional set of user-defined specific time ranges for fine-tuning. For any time step, the most specific adjustment (a custom range) will take precedence over the broader period adjustment. Numerical data is ignored.</p>
+                         <ol class="list-decimal pl-5 space-y-3">
+                             <li><strong>Factor Precedence:</strong> A factor map is created for every time step. First, factors from the four main periods are applied. Then, factors from any defined specific adjustment ranges are applied, overwriting the main period factors for those specific times.</li>
+                            <li><strong>Bedrock Acceleration Logic (per step):</strong>
+                                <ul class="list-disc pl-5 mt-2 space-y-2">
+                                    <li><code>Bedrock Accel. = Seed Accel. * Final Factor from Map</code></li>
+                                </ul>
+                            </li>
+                        </ol>
+                        <h4 class="text-lg font-semibold mt-6 mb-2 text-rose-700">Restraint Factors & Limitations (Applicable to Both Modes):</h4>
+                        <ul class="list-disc pl-5 space-y-3">
+                            <li><strong>Amplification Enabled:</strong> The previous cap preventing bedrock acceleration from exceeding seed acceleration has been removed. This allows the final result to reflect higher intensity, which can occur due to soil amplification effects during a seismic event.</li>
+                            <li><strong>Segment & Average Mode Cap:</strong> In Segment & Average mode, if the effective factor exceeds 1, it is capped at a maximum value of 2 to prevent excessive attenuation.</li>
+                            <li><strong>Data Consistency:</strong> For Segment & Average mode, both seed and numerical acceleration data must have the same number of time steps. Mismatched data sets will prevent bedrock motion generation.</li>
+                            <li><strong>Numerical Stability:</strong> Division by zero is prevented by ignoring time steps where the seed acceleration value is below a threshold (1e-9).</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="period-controls-wrapper" class="hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <div id="tabs" class="flex border-b">
+                        <button class="tab-btn active px-4 py-3 text-sm font-medium rounded-t-lg" data-tab="pre">Pre-period</button>
+                        <button class="tab-btn px-4 py-3 text-sm font-medium rounded-t-lg" data-tab="main">Main period</button>
+                        <button class="tab-btn px-4 py-3 text-sm font-medium rounded-t-lg" data-tab="aux">Auxiliary period</button>
+                        <button class="tab-btn px-4 py-3 text-sm font-medium rounded-t-lg" data-tab="post">Post-period</button>
+                    </div>
+                    <button id="auto-divide-periods" class="auto-divide-btn"><i class="fas fa-magic mr-1"></i>Auto Divide</button>
+                </div>
+                <div id="tab-contents">
+                    <div id="tab-pre" class="tab-content active p-4 rounded-b-lg rounded-r-lg"></div>
+                    <div id="tab-main" class="tab-content p-4 rounded-b-lg rounded-r-lg"></div>
+                    <div id="tab-aux" class="tab-content p-4 rounded-b-lg rounded-r-lg"></div>
+                    <div id="tab-post" class="tab-content p-4 rounded-b-lg rounded-r-lg"></div>
+                </div>
+            </div>
+
+            <div id="specific-adjustments-wrapper" class="hidden space-y-4 mt-6">
+                <h3 class="text-xl font-semibold font-display text-indigo-700 border-t pt-4">Specific Time Range Adjustments</h3>
+                <p class="text-sm text-secondary">Define additional, specific time ranges to apply a manual scaling factor. These adjustments will override the main period scaling for the specified range.</p>
+                <div class="flex items-center gap-4 p-3 rounded-lg controls-bg">
+                    <label for="num-adjustments" class="text-sm font-medium text-secondary">Number of Adjustment Ranges:</label>
+                    <input type="number" id="num-adjustments" value="1" min="0" class="form-input w-24 rounded-md">
+                    <button id="set-adjustments-btn" class="btn btn-secondary px-4 py-2 text-sm">Set</button>
+                    <button id="reset-adjustments-btn" class="btn btn-reset px-4 py-2 text-sm ml-auto"><i class="fas fa-undo mr-2"></i>Reset Specific Adjustments</button>
+                </div>
+                <div id="adjustment-tabs-container" class="space-y-3"></div>
+            </div>
+            
+            <div id="period-placeholder" class="text-center p-10 border rounded-lg border-dashed">
+                <i class="fas fa-hand-pointer text-3xl text-secondary mb-4"></i>
+                <p class="text-secondary">Please select an Analysis Mode to configure periods.</p>
+            </div>
+        </section>
+
+        <div class="space-y-8">
+             <section class="card p-6 rounded-lg">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center border border-indigo-200">
+                        <i class="fas fa-chart-line text-2xl text-indigo-600"></i>
+                    </div>
+                    <div>
+                         <h2 class="text-2xl font-semibold">Generation & Analysis</h2>
+                         <p class="text-sm text-secondary">Adjust segments and visualize the final data in real-time</p>
+                    </div>
+                </div>
+                <div class="mb-6 flex flex-col sm:flex-row gap-4">
+                    <button id="generate-bedrock-btn" class="btn btn-primary flex-1 px-6 py-3 rounded-md text-lg font-semibold flex items-center justify-center gap-3" disabled><i class="fas fa-cogs"></i>Generate Bedrock Motion</button>
+                    <button id="export-data-btn" class="btn btn-secondary flex-1 px-4 py-3 rounded-md font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled><i class="fas fa-download"></i>Export Final Data</button>
+                    <button id="export-image-btn" class="btn btn-secondary flex-1 px-4 py-3 rounded-md font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled><i class="fas fa-image"></i>Export Image</button>
+                </div>
+                 <div class="chart-bg min-h-[400px] h-96 rounded-lg p-2">
+                    <canvas id="comparison-chart"></canvas>
+                 </div>
+                 <div id="chart-controls" class="mt-6">
+                    <h3 class="text-lg font-semibold mb-3 font-display">Chart Style & Layering</h3>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-4 items-center gap-3 p-3 rounded-md controls-bg border-2 border-rose-400">
+                            <label class="font-semibold text-rose-600">Final Bedrock</label>
+                            <input type="color" id="color-2" value="#E11D48" class="form-input h-10 p-1 rounded-md">
+                            <select id="style-2" class="form-select rounded-md py-2"><option value="solid" selected>Solid</option><option value="dashed">Dashed</option><option value="dotted">Dotted</option></select>
+                            <div class="flex gap-2">
+                                 <button class="btn btn-secondary btn-layer" data-action="bring-forward" data-idx="2">Fwd</button><button class="btn btn-secondary btn-layer" data-action="send-backward" data-idx="2">Bwd</button>
+                                 <button class="btn btn-secondary btn-layer" data-action="bring-front" data-idx="2">Front</button><button class="btn btn-secondary btn-layer" data-action="send-back" data-idx="2">Back</button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-4 items-center gap-3 p-3 rounded-md controls-bg">
+                            <label class="font-semibold text-sky-600">Seed Accel.</label>
+                            <input type="color" id="color-0" value="#0284C7" class="form-input h-10 p-1 rounded-md">
+                            <select id="style-0" class="form-select rounded-md py-2"><option value="solid">Solid</option><option value="dashed">Dashed</option><option value="dotted">Dotted</option></select>
+                            <div class="flex gap-2">
+                                 <button class="btn btn-secondary btn-layer" data-action="bring-forward" data-idx="0">Fwd</button><button class="btn btn-secondary btn-layer" data-action="send-backward" data-idx="0">Bwd</button>
+                                 <button class="btn btn-secondary btn-layer" data-action="bring-front" data-idx="0">Front</button><button class="btn btn-secondary btn-layer" data-action="send-back" data-idx="0">Back</button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-4 items-center gap-3 p-3 rounded-md controls-bg">
+                            <label class="font-semibold text-indigo-600">Numerical Accel.</label>
+                            <input type="color" id="color-1" value="#4F46E5" class="form-input h-10 p-1 rounded-md">
+                            <select id="style-1" class="form-select rounded-md py-2"><option value="solid">Solid</option><option value="dashed" selected>Dashed</option><option value="dotted">Dotted</option></select>
+                            <div class="flex gap-2">
+                                 <button class="btn btn-secondary btn-layer" data-action="bring-forward" data-idx="1">Fwd</button><button class="btn btn-secondary btn-layer" data-action="send-backward" data-idx="1">Bwd</button>
+                                 <button class="btn btn-secondary btn-layer" data-action="bring-front" data-idx="1">Front</button><button class="btn btn-secondary btn-layer" data-action="send-back" data-idx="1">Back</button>
+                            </div>
+                        </div>
+                    </div>
+                 </div>
+             </section>
+        </div>
+        
+    </main>
+    
+    <div id="notification-area"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const appState = {
+                seedData: null, numericalData: null, finalBedrockData: null,
+                comparisonChart: null,
+                periodTimes: {
+                    pre: { start: 0, end: 0 }, main: { start: 0, end: 0 },
+                    aux: { start: 0, end: 0 }, post: { start: 0, end: 0 }
+                },
+                analysisMode: null,
+                specificAdjustments: [],
+                layerOrder: [2, 0, 1], 
+                pgaStep: -1,
+                pgaSegmentIndex: -1,
+                dataConfirmed: false,
+                isSineWave: false
+            };
+
+            const periods = ['pre', 'main', 'aux', 'post'];
+            const timeIntervalInput = document.getElementById('time-interval');
+            const frequencyInput = document.getElementById('frequency-input');
+            
+            const showNotification = (message, type = 'success') => {
+                const notificationArea = document.getElementById('notification-area');
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                notification.textContent = message;
+                notificationArea.appendChild(notification);
+                notification.style.display = 'block';
+                setTimeout(() => { notification.remove(); }, 4000);
+            };
+
+            const updateControlStates = () => {
+                const uploadInitialBtn = document.getElementById('upload-initial');
+                const uploadNumericalBtn = document.getElementById('upload-numerical');
+                const confirmBtn = document.getElementById('confirm-btn');
+                const generateBedrockBtn = document.getElementById('generate-bedrock-btn');
+                const autoDivideBtn = document.getElementById('auto-divide-periods');
+
+                if (!appState.analysisMode) {
+                    uploadInitialBtn.disabled = true;
+                    uploadInitialBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    uploadNumericalBtn.disabled = true;
+                    uploadNumericalBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    uploadInitialBtn.disabled = false;
+                    uploadInitialBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    // Rule 1: Handle Numerical Upload button state based on mode
+                    if (appState.analysisMode === 'direct-scaling') {
+                        uploadNumericalBtn.disabled = true;
+                        uploadNumericalBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                        uploadNumericalBtn.innerHTML = `<i class="fas fa-ban mr-2 text-gray-400"></i>Numerical (Not Used)`;
+                    } else {
+                        uploadNumericalBtn.disabled = false;
+                        uploadNumericalBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                        if (appState.numericalData) {
+                            uploadNumericalBtn.classList.add('border-green-500', 'bg-green-50');
+                            uploadNumericalBtn.innerHTML = `<i class="fas fa-check-circle mr-2 text-green-600"></i> Loaded`;
+                        } else {
+                            uploadNumericalBtn.classList.remove('border-green-500', 'bg-green-50');
+                            uploadNumericalBtn.innerHTML = `<i class="fas fa-file-csv mr-2 text-gray-500"></i>Numerical Accel.`;
+                        }
+                    }
+                }
+
+                autoDivideBtn.style.display = appState.seedData ? 'block' : 'none';
+
+
+                // Rule 2: Handle Confirm button state
+                let canConfirm = false;
+                if (appState.analysisMode === 'direct-scaling') {
+                    if (appState.seedData) canConfirm = true;
+                } else { // segment-average
+                    if (appState.seedData && appState.numericalData && appState.seedData.length === appState.numericalData.length) {
+                        canConfirm = true;
+                    }
+                }
+                
+                confirmBtn.disabled = !canConfirm || appState.dataConfirmed;
+
+                if (appState.dataConfirmed) {
+                     confirmBtn.classList.remove('btn-confirm');
+                     confirmBtn.classList.add('bg-green-700', 'cursor-default');
+                     confirmBtn.innerHTML = `<i class="fas fa-check-double mr-2"></i>Confirmed`;
+                } else {
+                    confirmBtn.classList.add('btn-confirm');
+                    confirmBtn.classList.remove('bg-green-700', 'cursor-default');
+                    confirmBtn.innerHTML = `<i class="fas fa-check-circle mr-2"></i>Confirm`;
+                }
+
+                // Rule 3: Handle Generate Bedrock button state
+                generateBedrockBtn.disabled = !appState.dataConfirmed;
+            };
+
+            const handleFileSelect = (file, targetData, buttonElement) => {
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const text = e.target.result;
+                        const data = text.split(/[\n\r]+/).map(line => parseFloat(line.trim())).filter(val => !isNaN(val));
+                        if (data.length === 0) throw new Error("No valid numerical data found.");
+
+                        appState[targetData] = data;
+                        appState.isSineWave = false;
+                        appState.dataConfirmed = false;
+                        appState.finalBedrockData = null;
+                        document.getElementById('export-sine-wave-btn').disabled = true;
+
+                        buttonElement.classList.add('border-green-500', 'bg-green-50');
+                        buttonElement.innerHTML = `<i class="fas fa-check-circle mr-2 text-green-600"></i> Loaded`;
+                        showNotification(`${file.name} loaded successfully.`, 'success');
+                        
+                        if (appState.seedData && appState.numericalData && appState.seedData.length !== appState.numericalData.length) {
+                            showNotification('Data files must have the same number of steps.', 'error');
+                        } else {
+                            updateDashboardMetrics();
+                            autoSegmentPeriods();
+                        }
+
+                        updateComparisonChart();
+                        updateControlStates();
+                        
+                    } catch (error) {
+                        showNotification(`Error: ${error.message}`, 'error');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            
+            const generateSineWaves = () => {
+                const seedAmplitude = parseFloat(document.getElementById('seed-amplitude').value);
+                const numericalAmplitude = parseFloat(document.getElementById('numerical-amplitude').value);
+                const frequency = parseFloat(frequencyInput.value);
+                const timeInterval = parseFloat(timeIntervalInput.value);
+                const duration = 10;
+                const numPoints = Math.round(duration / timeInterval);
+                const seedData = [];
+                const numericalData = [];
+                const phaseShift = Math.PI / 4;
+
+                for(let i = 0; i < numPoints; i++) {
+                    const time = i * timeInterval;
+                    seedData.push(seedAmplitude * Math.sin(2 * Math.PI * frequency * time));
+                    numericalData.push(numericalAmplitude * Math.sin(2 * Math.PI * frequency * time + phaseShift));
+                }
+                
+                appState.seedData = seedData;
+                appState.numericalData = numericalData;
+                appState.isSineWave = true;
+                appState.dataConfirmed = false;
+                appState.finalBedrockData = null;
+                document.getElementById('export-sine-wave-btn').disabled = false;
+
+
+                document.getElementById('upload-initial').classList.remove('border-green-500', 'bg-green-50');
+                document.getElementById('upload-initial').innerHTML = `<i class="fas fa-file-waveform mr-2 text-gray-500"></i>Seed Accel.`;
+                document.getElementById('upload-numerical').classList.remove('border-green-500', 'bg-green-50');
+
+                updateDashboardMetrics();
+                autoSegmentPeriods();
+                updateComparisonChart();
+                updateControlStates();
+                showNotification('Sine waves generated. Please select an Analysis Mode.', 'success');
+            };
+            
+            const generateBedrockMotion = () => {
+                if (!appState.dataConfirmed) {
+                    showNotification('Please confirm data before generating bedrock motion.', 'error');
+                    return;
+                }
+
+                let finalMotion = (appState.analysisMode === 'segment-average') ? generateBedrockSegmentAverage() : generateBedrockDirectScaling();
+                
+                appState.finalBedrockData = finalMotion;
+                document.getElementById('export-data-btn').disabled = false;
+                document.getElementById('export-image-btn').disabled = false;
+                
+                const bedrockIndex = 2;
+                const currentPos = appState.layerOrder.indexOf(bedrockIndex);
+                if (currentPos > 0) {
+                    appState.layerOrder.splice(currentPos, 1);
+                    appState.layerOrder.unshift(bedrockIndex);
+                }
+                
+                updateComparisonChart();
+                showNotification('Final bedrock motion generated successfully.', 'success');
+            };
+
+            const generateBedrockSegmentAverage = () => {
+                const finalMotion = new Array(appState.seedData.length).fill(0);
+                const timeInterval = parseFloat(timeIntervalInput.value);
+
+                periods.forEach(p => {
+                    const numSegmentsEl = document.getElementById(`${p}-segments`);
+                    if (!numSegmentsEl) return;
+                    const numSegments = parseInt(numSegmentsEl.value) || 1;
+                    const periodStartTime = parseFloat(document.getElementById(`${p}-start-time`).value) || 0;
+                    const periodEndTime = parseFloat(document.getElementById(`${p}-end-time`).value) || 0;
+                    const periodStartStep = Math.round(periodStartTime / timeInterval);
+                    const periodEndStep = Math.round(periodEndTime / timeInterval);
+                    const totalStepsInPeriod = periodEndStep - periodStartStep;
+                    
+                    if (totalStepsInPeriod <= 0) return;
+
+                    const stepsPerSegment = Math.floor(totalStepsInPeriod / numSegments);
+                    let currentStep = periodStartStep;
+
+                    for (let i = 0; i < numSegments; i++) {
+                        const segmentStartStep = currentStep;
+                        const segmentEndStep = (i === numSegments - 1) ? (periodEndStep - 1) : (currentStep + stepsPerSegment - 1);
+                        let scalingFactorSum = 0, count = 0;
+                        for (let j = segmentStartStep; j <= segmentEndStep; j++) {
+                            if (j >= appState.seedData.length) continue;
+                            const seedVal = appState.seedData[j];
+                            const numericalVal = appState.numericalData[j];
+                            if (Math.abs(seedVal) > 1e-9) {
+                                scalingFactorSum += (numericalVal / seedVal);
+                                count++;
+                            }
+                        }
+                        const avgScalingFactor = count > 0 ? scalingFactorSum / count : 0;
+                        const manualFactorInput = document.getElementById(`${p}-manual-factor-${i}`);
+                        let manualFactor = manualFactorInput ? parseFloat(manualFactorInput.value) : 1.0;
+                        if (isNaN(manualFactor)) manualFactor = 1.0;
+                        let effectiveFactor = avgScalingFactor * manualFactor;
+                        if (effectiveFactor > 1) effectiveFactor = Math.min(effectiveFactor, 2);
+
+                        for (let j = segmentStartStep; j <= segmentEndStep; j++) {
+                            if (j < finalMotion.length) {
+                                const seedVal = appState.seedData[j];
+                                const numericalVal = appState.numericalData[j];
+                                let bedrockVal;
+
+                                if (effectiveFactor < 0) {
+                                    bedrockVal = seedVal;
+                                } else if (Math.abs(effectiveFactor) < 1e-9) {
+                                    bedrockVal = numericalVal;
+                                } else {
+                                    bedrockVal = numericalVal / effectiveFactor;
+                                }
+                                finalMotion[j] = bedrockVal;
+                            }
+                        }
+                        currentStep = segmentEndStep + 1;
+                    }
+                });
+                return finalMotion;
+            };
+
+            const generateBedrockDirectScaling = () => {
+                if (!appState.seedData) return [];
+                const timeInterval = parseFloat(timeIntervalInput.value);
+                
+                // 1. Initialize factor map
+                const factorMap = new Array(appState.seedData.length).fill(1.0);
+
+                // 2. Apply main period scaling to the map
+                periods.forEach(p => {
+                    const start = parseFloat(document.getElementById(`${p}-start-time`).value);
+                    const end = parseFloat(document.getElementById(`${p}-end-time`).value);
+                    const factor = parseFloat(document.getElementById(`${p}-manual-factor`).value);
+                    
+                    if (isNaN(start) || isNaN(end) || isNaN(factor) || start >= end) return;
+                    
+                    const startStep = Math.round(start / timeInterval);
+                    const endStep = Math.round(end / timeInterval);
+
+                    for (let j = startStep; j < endStep; j++) {
+                        if (j >= 0 && j < factorMap.length) {
+                            factorMap[j] = factor;
+                        }
+                    }
+                });
+
+                // 3. Apply specific adjustments, overwriting the period scaling on the map
+                appState.specificAdjustments.forEach(adj => {
+                    const start = parseFloat(adj.start);
+                    const end = parseFloat(adj.end);
+                    const factor = parseFloat(adj.factor);
+
+                    if (isNaN(start) || isNaN(end) || isNaN(factor) || start >= end) return;
+
+                    const startStep = Math.round(start / timeInterval);
+                    const endStep = Math.round(end / timeInterval);
+
+                    for (let j = startStep; j < endStep; j++) {
+                        if (j >= 0 && j < factorMap.length) {
+                            factorMap[j] = factor;
+                        }
+                    }
+                });
+                
+                // 4. Generate final motion using the factor map
+                const finalMotion = appState.seedData.map((val, i) => val * factorMap[i]);
+
+                return finalMotion;
+            };
+
+            const resetAllData = () => {
+                appState.seedData = null; appState.numericalData = null; appState.finalBedrockData = null;
+                appState.dataConfirmed = false;
+                appState.isSineWave = false;
+                document.getElementById('upload-initial').classList.remove('border-green-500', 'bg-green-50');
+                document.getElementById('upload-initial').innerHTML = `<i class="fas fa-file-waveform mr-2 text-gray-500"></i>Seed Accel.`;
+                document.getElementById('upload-numerical').classList.remove('border-green-500', 'bg-green-50');
+                document.getElementById('data-dashboard').classList.add('hidden');
+                document.getElementById('export-data-btn').disabled = true;
+                document.getElementById('export-image-btn').disabled = true;
+                document.getElementById('export-sine-wave-btn').disabled = true;
+                updateComparisonChart();
+                appState.periodTimes = { pre: { start: 0, end: 0 }, main: { start: 0, end: 0 }, aux: { start: 0, end: 0 }, post: { start: 0, end: 0 } };
+                
+                appState.analysisMode = null;
+                document.getElementById('mode-segment-average').classList.remove('active');
+                document.getElementById('mode-direct-scaling').classList.remove('active');
+                
+                document.getElementById('period-controls-wrapper').classList.add('hidden');
+                document.getElementById('specific-adjustments-wrapper').classList.add('hidden');
+                document.getElementById('period-placeholder').classList.remove('hidden');
+
+                document.getElementById('initial-file-input').value = '';
+                document.getElementById('numerical-file-input').value = '';
+                updateControlStates();
+                showNotification('All data and settings have been reset.', 'success');
+            };
+
+            const confirmData = () => {
+                if (appState.analysisMode === 'segment-average') {
+                    if (!appState.seedData || !appState.numericalData) { 
+                        showNotification('Segment & Average mode requires both seed and numerical data.', 'error'); 
+                        return; 
+                    }
+                    if (appState.seedData.length !== appState.numericalData.length) { 
+                        showNotification('Data files must have the same number of steps.', 'error'); 
+                        return; 
+                    }
+                } else { // direct-scaling
+                    if (!appState.seedData) { 
+                        showNotification('Direct Scaling mode requires seed data.', 'error'); 
+                        return; 
+                    }
+                }
+
+                appState.dataConfirmed = true;
+                updateControlStates();
+                showNotification('Data confirmed. You can now generate bedrock motion.', 'success');
+            };
+
+            const updateDashboardMetrics = () => {
+                if (!appState.seedData) { document.getElementById('data-dashboard').classList.add('hidden'); return; }
+                document.getElementById('data-dashboard').classList.remove('hidden');
+                const timeInterval = parseFloat(timeIntervalInput.value);
+                const totalSteps = appState.seedData.length;
+                const duration = totalSteps * timeInterval;
+                const pgaSeed = Math.max(...appState.seedData.map(Math.abs));
+                
+                const pgaNumericalEl = document.getElementById('pga-numerical-value');
+                if (appState.numericalData) {
+                    const pgaNumerical = Math.max(...appState.numericalData.map(Math.abs));
+                    pgaNumericalEl.parentElement.style.display = 'block';
+                    pgaNumericalEl.textContent = `${pgaNumerical.toFixed(3)} g`;
+                } else {
+                    pgaNumericalEl.parentElement.style.display = 'none';
+                }
+
+                if (appState.isSineWave) {
+                    appState.pgaStep = -1;
+                } else {
+                    appState.pgaStep = appState.seedData.map(Math.abs).indexOf(pgaSeed);
+                }
+                document.getElementById('total-steps').textContent = totalSteps;
+                document.getElementById('duration-value').textContent = `${duration.toFixed(2)} s`;
+                document.getElementById('pga-seed-value').textContent = `${pgaSeed.toFixed(3)} g`;
+            };
+
+            const autoSegmentPeriods = () => {
+                if (!appState.seedData) return;
+                const len = appState.seedData.length;
+                const timeInterval = parseFloat(timeIntervalInput.value) || 0;
+
+                if (appState.isSineWave || appState.pgaStep < 0) {
+                    // For sine waves or if no distinct PGA, divide evenly.
+                    if (len < 4) {
+                         appState.periodTimes = {
+                            pre: { start: 0, end: (len > 0 ? len - 1 : 0) * timeInterval },
+                            main: { start: 0, end: 0 }, aux: { start: 0, end: 0 }, post: { start: 0, end: 0 }
+                        };
+                    } else {
+                        const stepsPerPeriod = Math.floor(len / 4);
+                        const preEndStep = stepsPerPeriod - 1;
+                        const mainStartStep = stepsPerPeriod;
+                        const mainEndStep = 2 * stepsPerPeriod - 1;
+                        const auxStartStep = 2 * stepsPerPeriod;
+                        const auxEndStep = 3 * stepsPerPeriod - 1;
+                        const postStartStep = 3 * stepsPerPeriod;
+
+                        appState.periodTimes.pre = { start: 0, end: preEndStep * timeInterval };
+                        appState.periodTimes.main = { start: mainStartStep * timeInterval, end: mainEndStep * timeInterval };
+                        appState.periodTimes.aux = { start: auxStartStep * timeInterval, end: auxEndStep * timeInterval };
+                        appState.periodTimes.post = { start: postStartStep * timeInterval, end: (len - 1) * timeInterval };
+                    }
+                } else {
+                    // Use PGA-based logic for irregular data
+                    const pgaIndex = appState.pgaStep;
+                    const mainPeriodStartStep = Math.max(0, pgaIndex - Math.floor(len * 0.1));
+                    const mainPeriodEndStep = Math.min(len - 1, pgaIndex + Math.floor(len * 0.2));
+                    const periodSteps = {
+                        pre: { start: 0, end: mainPeriodStartStep > 0 ? mainPeriodStartStep - 1 : 0 },
+                        main: { start: mainPeriodStartStep, end: mainPeriodEndStep },
+                        aux: { start: mainPeriodEndStep + 1, end: Math.min(len - 1, mainPeriodEndStep + Math.floor(len * 0.3)) },
+                        post: { start: Math.min(len - 1, mainPeriodEndStep + Math.floor(len * 0.3) + 1), end: len - 1 }
+                    };
+                    periods.forEach(p => {
+                         const period = periodSteps[p];
+                         appState.periodTimes[p].start = period.start * timeInterval;
+                         appState.periodTimes[p].end = period.end * timeInterval;
+                    });
+                }
+                periods.forEach(renderPeriodTabContent);
+            };
+            
+            const autoDividePeriods = () => {
+                if (!appState.seedData) {
+                    showNotification('Please load data first.', 'error');
+                    return;
+                }
+                autoSegmentPeriods();
+                showNotification('Periods automatically divided based on PGA location.', 'success');
+            };
+
+            const renderPeriodTabContent = (p) => {
+                const container = document.getElementById(`tab-${p}`);
+                const period = appState.periodTimes[p];
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <label for="${p}-start-time" class="block text-sm font-medium text-secondary mb-1">Start Time (s)</label>
+                            <input type="number" id="${p}-start-time" value="${period.start.toFixed(3)}" step="0.01" class="form-input w-full rounded-md period-time-input">
+                        </div>
+                         <div>
+                            <label for="${p}-end-time" class="block text-sm font-medium text-secondary mb-1">End Time (s)</label>
+                            <input type="number" id="${p}-end-time" value="${period.end.toFixed(3)}" step="0.01" class="form-input w-full rounded-md period-time-input">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-secondary mb-1">Period Duration (s)</label>
+                            <input type="number" id="${p}-duration" value="${(period.end - period.start).toFixed(3)}" class="form-input w-full rounded-md" readonly>
+                        </div>
+                    </div>
+                    <div id="${p}-controls-container" class="mt-4"></div>`;
+
+                if (appState.analysisMode === 'segment-average') {
+                    renderSegmentAverageControls(p);
+                    if (appState.seedData) calculateAndRenderSegments(p);
+                } else if (appState.analysisMode === 'direct-scaling') {
+                    renderDirectScalingControls(p);
+                }
+
+                const recalculate = () => {
+                    appState.periodTimes[p].start = parseFloat(document.getElementById(`${p}-start-time`).value) || 0;
+                    appState.periodTimes[p].end = parseFloat(document.getElementById(`${p}-end-time`).value) || 0;
+                    document.getElementById(`${p}-duration`).value = (appState.periodTimes[p].end - appState.periodTimes[p].start).toFixed(3);
+                    
+                    if (appState.analysisMode === 'segment-average' && appState.seedData) {
+                        calculateAndRenderSegments(p);
+                    } else if (appState.analysisMode === 'direct-scaling' && appState.dataConfirmed) {
+                        appState.finalBedrockData = generateBedrockDirectScaling();
+                        updateComparisonChart();
+                    }
+                    updateChartAnnotations();
+                };
+                
+                document.getElementById(`${p}-start-time`).addEventListener('input', recalculate);
+                document.getElementById(`${p}-end-time`).addEventListener('input', recalculate);
+            };
+
+            const renderSegmentAverageControls = (p) => {
+                const controlsContainer = document.getElementById(`${p}-controls-container`);
+                controlsContainer.innerHTML = `
+                    <div class="mb-4">
+                        <label for="${p}-segments" class="block text-sm font-medium text-secondary mb-1">Number of Segments</label>
+                        <input type="number" id="${p}-segments" value="1" min="1" class="form-input w-full md:w-1/3 rounded-md">
+                    </div>
+                    <div id="${p}-segment-results" class="mt-4 space-y-3"></div>`;
+                document.getElementById(`${p}-segments`).addEventListener('input', () => calculateAndRenderSegments(p));
+            };
+            
+            const renderDirectScalingControls = (p) => {
+                const controlsContainer = document.getElementById(`${p}-controls-container`);
+                controlsContainer.innerHTML = `
+                    <div class="p-4 rounded-md controls-bg border border-indigo-200 flex items-center gap-4">
+                        <label for="${p}-manual-factor" class="text-md font-semibold text-indigo-700 whitespace-nowrap">Manual Scaling Factor:</label>
+                        <input type="number" id="${p}-manual-factor" value="1.0" step="0.01" class="form-input manual-factor w-full rounded-md text-lg p-2 text-center">
+                    </div>`;
+                document.getElementById(`${p}-manual-factor`).addEventListener('input', () => {
+                    if (appState.dataConfirmed) {
+                        appState.finalBedrockData = generateBedrockDirectScaling();
+                        updateComparisonChart();
+                    }
+                });
+            };
+
+            const calculateAndRenderSegments = (p) => {
+                if (!appState.seedData || !appState.numericalData) {
+                    const resultsContainer = document.getElementById(`${p}-segment-results`);
+                    if(resultsContainer) resultsContainer.innerHTML = '<p class="text-sm text-amber-600">Segment & Average mode requires both seed and numerical data.</p>';
+                    return;
+                }
+                const resultsContainer = document.getElementById(`${p}-segment-results`);
+                if (!resultsContainer) return;
+                resultsContainer.innerHTML = '<div class="text-center text-secondary"><i class="fas fa-spinner fa-spin mr-2"></i>Calculating...</div>';
+                
+                const timeInterval = parseFloat(timeIntervalInput.value);
+                const numSegments = parseInt(document.getElementById(`${p}-segments`).value) || 1;
+                const periodStartStep = Math.round(appState.periodTimes[p].start / timeInterval);
+                const periodEndStep = Math.round(appState.periodTimes[p].end / timeInterval);
+                const totalStepsInPeriod = periodEndStep - periodStartStep;
+
+                if (totalStepsInPeriod <= 0) { resultsContainer.innerHTML = '<p class="text-sm text-secondary">No data in this period.</p>'; return; }
+
+                let segmentResultsHTML = '';
+                const stepsPerSegment = Math.floor(totalStepsInPeriod / numSegments);
+                let currentStep = periodStartStep;
+
+                for (let i = 0; i < numSegments; i++) {
+                    const segmentStartStep = currentStep;
+                    const segmentEndStep = (i === numSegments - 1) ? (periodEndStep -1) : (currentStep + stepsPerSegment - 1);
+                    const containsPGA = (p === 'main' && appState.pgaStep >= segmentStartStep && appState.pgaStep <= segmentEndStep);
+                    let scalingFactorSum = 0, count = 0;
+                    for (let j = segmentStartStep; j <= segmentEndStep; j++) {
+                        if (j >= appState.seedData.length) continue;
+                        const seedVal = appState.seedData[j];
+                        const numericalVal = appState.numericalData[j];
+                        if (Math.abs(seedVal) > 1e-9) { scalingFactorSum += (numericalVal / seedVal); count++; }
+                    }
+                    const avgScalingFactor = count > 0 ? scalingFactorSum / count : 0;
+                    if (containsPGA) appState.pgaSegmentIndex = i;
+                    
+                    segmentResultsHTML += `
+                        <div class="p-3 rounded-md grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-x-4 gap-y-2 text-sm items-center controls-bg ${containsPGA ? 'pga-segment' : ''}" id="${p}-segment-${i}">
+                           ${containsPGA ? '<div class="pga-badge pga-pulse"><i class="fas fa-star"></i> PGA</div>' : ''}
+                           <div class="font-semibold text-secondary">Seg ${i + 1}</div>
+                           <div><span class="text-secondary">Avg Factor:</span> <span class="font-bold">${avgScalingFactor.toFixed(4)}</span></div>
+                           <div class="flex items-center gap-2">
+                               <label for="${p}-manual-factor-${i}" class="text-secondary whitespace-nowrap">Manual x:</label>
+                               <input type="number" id="${p}-manual-factor-${i}" value="1.0" step="0.01" class="form-input manual-factor w-full rounded-md text-xs p-1 text-center" oninput="updateEffectiveFactor('${p}', ${i}, ${avgScalingFactor})">
+                           </div>
+                           <div><span class="text-secondary">Effective:</span> <span id="${p}-effective-factor-${i}" class="font-bold ${avgScalingFactor <= 1 ? 'text-green-600' : 'text-yellow-600'}">${avgScalingFactor.toFixed(4)}</span></div>
+                           <div><span class="text-secondary">Start:</span> <span class="font-mono text-blue-600">${(segmentStartStep * timeInterval).toFixed(3)}s</span></div>
+                           <div><span class="text-secondary">End:</span> <span class="font-mono text-blue-600">${((segmentEndStep + 1) * timeInterval).toFixed(3)}s</span></div>
+                           <div><span class="text-secondary">Duration:</span> <span class="font-mono font-bold text-blue-600">${((segmentEndStep + 1 - segmentStartStep) * timeInterval).toFixed(3)}s</span></div>
+                           <div class="flex justify-end"><button class="reset-btn" onclick="resetSegment('${p}', ${i}, ${avgScalingFactor})"><i class="fas fa-undo mr-1"></i>Reset</button></div>
+                        </div>`;
+                    currentStep = segmentEndStep + 1;
+                }
+                resultsContainer.innerHTML = segmentResultsHTML;
+                
+                if (p === 'main' && appState.pgaSegmentIndex >= 0) {
+                    setTimeout(() => { document.getElementById(`main-segment-${appState.pgaSegmentIndex}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100);
+                }
+            };
+
+            window.updateEffectiveFactor = (period, segmentIndex, avgScalingFactor) => {
+                const manualFactorInput = document.getElementById(`${period}-manual-factor-${segmentIndex}`);
+                const effectiveFactorDisplay = document.getElementById(`${period}-effective-factor-${segmentIndex}`);
+                if (!manualFactorInput || !effectiveFactorDisplay) return;
+                let manualFactor = parseFloat(manualFactorInput.value) || 1.0;
+                let effectiveFactor = avgScalingFactor * manualFactor;
+                if (effectiveFactor > 1) effectiveFactor = Math.min(effectiveFactor, 2);
+                effectiveFactorDisplay.textContent = effectiveFactor.toFixed(4);
+                effectiveFactorDisplay.className = `font-bold ${effectiveFactor <= 1 ? 'text-green-600' : 'text-yellow-600'}`;
+            };
+
+            window.resetSegment = (period, segmentIndex, avgScalingFactor) => {
+                document.getElementById(`${period}-manual-factor-${segmentIndex}`).value = "1.0";
+                updateEffectiveFactor(period, segmentIndex, avgScalingFactor);
+                showNotification(`Segment ${segmentIndex + 1} in ${period} period reset.`, 'success');
+            };
+
+            document.getElementById('upload-initial').addEventListener('click', () => document.getElementById('initial-file-input').click());
+            document.getElementById('upload-numerical').addEventListener('click', () => document.getElementById('numerical-file-input').click());
+            document.getElementById('initial-file-input').addEventListener('change', (e) => handleFileSelect(e.target.files[0], 'seedData', document.getElementById('upload-initial')));
+            document.getElementById('numerical-file-input').addEventListener('change', (e) => handleFileSelect(e.target.files[0], 'numericalData', document.getElementById('upload-numerical')));
+            document.getElementById('generate-sine-waves-btn').addEventListener('click', () => generateSineWaves());
+            document.getElementById('auto-divide-periods').addEventListener('click', autoDividePeriods);
+            document.getElementById('generate-bedrock-btn').addEventListener('click', generateBedrockMotion);
+            document.getElementById('reset-btn').addEventListener('click', resetAllData);
+            document.getElementById('confirm-btn').addEventListener('click', confirmData);
+
+            const setAnalysisMode = (mode) => {
+                if (appState.analysisMode === mode) return;
+                
+                document.getElementById('period-placeholder').classList.add('hidden');
+                document.getElementById('period-controls-wrapper').classList.remove('hidden');
+                document.getElementById('specific-adjustments-wrapper').classList.toggle('hidden', mode !== 'direct-scaling');
+
+                appState.analysisMode = mode;
+                appState.dataConfirmed = false;
+                appState.finalBedrockData = null;
+                
+                document.getElementById('mode-segment-average').classList.toggle('active', mode === 'segment-average');
+                document.getElementById('mode-direct-scaling').classList.toggle('active', mode === 'direct-scaling');
+                
+                autoSegmentPeriods();
+                if (mode === 'direct-scaling') {
+                    renderSpecificAdjustmentTabs();
+                }
+
+                updateComparisonChart();
+                updateControlStates();
+                showNotification(`Switched to ${mode === 'segment-average' ? 'Segment & Average' : 'Direct Scaling'} mode.`, 'success');
+            };
+            document.getElementById('mode-segment-average').addEventListener('click', () => setAnalysisMode('segment-average'));
+            document.getElementById('mode-direct-scaling').addEventListener('click', () => setAnalysisMode('direct-scaling'));
+            
+            const renderSpecificAdjustmentTabs = () => {
+                const count = parseInt(document.getElementById('num-adjustments').value) || 0;
+                const container = document.getElementById('adjustment-tabs-container');
+                container.innerHTML = '';
+                appState.specificAdjustments.length = count; 
+
+                for (let i = 0; i < count; i++) {
+                    if (!appState.specificAdjustments[i]) {
+                         appState.specificAdjustments[i] = { start: '', end: '', factor: '1.0' };
+                    }
+                    const adj = appState.specificAdjustments[i];
+                    const tabHTML = `
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center p-3 rounded-lg controls-bg border border-dashed border-indigo-300">
+                            <strong class="text-secondary text-sm">Specific Range ${i + 1}</strong>
+                            <div class="flex items-center gap-2">
+                                <label for="adj-start-${i}" class="text-sm font-medium text-secondary">Start (s):</label>
+                                <input type="number" id="adj-start-${i}" data-index="${i}" data-prop="start" value="${adj.start}" class="adj-input form-input w-full rounded-md p-1 text-sm">
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label for="adj-end-${i}" class="text-sm font-medium text-secondary">End (s):</label>
+                                <input type="number" id="adj-end-${i}" data-index="${i}" data-prop="end" value="${adj.end}" class="adj-input form-input w-full rounded-md p-1 text-sm">
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label for="adj-factor-${i}" class="text-sm font-medium text-secondary">Factor:</label>
+                                <input type="number" id="adj-factor-${i}" data-index="${i}" data-prop="factor" value="${adj.factor}" step="0.01" class="adj-input form-input w-full rounded-md p-1 text-sm manual-factor">
+                            </div>
+                        </div>
+                    `;
+                    container.insertAdjacentHTML('beforeend', tabHTML);
+                }
+                document.querySelectorAll('.adj-input').forEach(input => {
+                    input.addEventListener('input', (e) => {
+                        const { index, prop } = e.target.dataset;
+                        appState.specificAdjustments[index][prop] = e.target.value;
+                        if (appState.dataConfirmed) {
+                           appState.finalBedrockData = generateBedrockDirectScaling();
+                        }
+                        updateComparisonChart();
+                    });
+                });
+                updateChartAnnotations();
+            };
+
+            document.getElementById('set-adjustments-btn').addEventListener('click', renderSpecificAdjustmentTabs);
+            document.getElementById('reset-adjustments-btn').addEventListener('click', () => {
+                document.getElementById('num-adjustments').value = 0;
+                renderSpecificAdjustmentTabs();
+                 if (appState.dataConfirmed) {
+                    appState.finalBedrockData = generateBedrockDirectScaling();
+                }
+                updateComparisonChart();
+                showNotification('All specific adjustments have been reset.', 'success');
+            });
+
+
+            ['seed-amplitude', 'numerical-amplitude', 'frequency-input'].forEach(id => {
+                document.getElementById(id).addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    document.getElementById(`${id.replace('-input', '')}-value`).textContent = value.toFixed(id.includes('frequency') ? 1 : 2);
+                });
+            });
+            
+            document.getElementById('export-data-btn').addEventListener('click', () => {
+                if (!appState.finalBedrockData) return;
+                const timeInterval = parseFloat(timeIntervalInput.value);
+                let csv = "Time (s),Acceleration (g)\n";
+                appState.finalBedrockData.forEach((val, i) => { csv += `${(i * timeInterval).toFixed(6)},${val.toFixed(6)}\n`; });
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'final_bedrock_acceleration.csv';
+                link.click();
+            });
+            
+            const exportSineWaveData = () => {
+                if (!appState.isSineWave || !appState.seedData) {
+                    showNotification('No sine wave data available to export.', 'error');
+                    return;
+                }
+
+                const timeInterval = parseFloat(timeIntervalInput.value);
+                const seedAmplitude = parseFloat(document.getElementById('seed-amplitude').value);
+                const frequency = parseFloat(frequencyInput.value);
+                
+                let fileContent = `# Sine Wave Ground Motion Data\n`;
+                fileContent += `# Time Step (s): ${timeInterval.toFixed(6)}\n`;
+                fileContent += `# Number of Points: ${appState.seedData.length}\n`;
+                fileContent += `# Amplitude (g): ${seedAmplitude.toFixed(4)}\n`;
+                fileContent += `# Frequency (Hz): ${frequency.toFixed(2)}\n`;
+                fileContent += `# --- Data Start ---\n`;
+
+                appState.seedData.forEach(val => {
+                    fileContent += `${val.toFixed(8)}\n`;
+                });
+
+                const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `sine_wave_seed_accel_A${seedAmplitude.toFixed(2)}_F${frequency.toFixed(1)}Hz.txt`;
+                link.click();
+                showNotification('Sine wave seed data exported.', 'success');
+            };
+
+            document.getElementById('export-sine-wave-btn').addEventListener('click', exportSineWaveData);
+
+            document.getElementById('export-image-btn').addEventListener('click', () => {
+                if (!appState.comparisonChart) return;
+                const link = document.createElement('a');
+                link.href = appState.comparisonChart.toBase64Image('image/png', 1);
+                link.download = 'amplitude_calibration_chart.png';
+                link.click();
+            });
+            
+            const updateChartTheme = () => {
+                if (!appState.comparisonChart) return;
+                const gridColor = 'rgba(209, 213, 219, 0.5)';
+                const textColor = '#4B5563';
+                const legendColor = '#1F2937';
+                const chart = appState.comparisonChart;
+                chart.options.scales.x.grid.color = gridColor;
+                chart.options.scales.y.grid.color = gridColor;
+                chart.options.scales.x.title.color = textColor;
+                chart.options.scales.y.title.color = textColor;
+                chart.options.scales.x.ticks.color = textColor;
+                chart.options.scales.y.ticks.color = textColor;
+                chart.options.plugins.legend.labels.color = legendColor;
+                if(chart.options.plugins.annotation) {
+                    const annotations = chart.options.plugins.annotation.annotations;
+                    Object.keys(annotations).forEach(key => {
+                        if (key.startsWith('box-period')) {
+                            annotations[key].borderColor = 'rgba(67, 56, 202, 0.5)';
+                            annotations[key].backgroundColor = 'rgba(67, 56, 202, 0.05)';
+                        } else { // specific adjustments
+                            annotations[key].borderColor = 'rgba(217, 70, 239, 0.5)';
+                            annotations[key].backgroundColor = 'rgba(217, 70, 239, 0.05)';
+                        }
+                    });
+                }
+                chart.update();
+            };
+
+            const updateChartAnnotations = () => {
+                if (!appState.comparisonChart || !appState.analysisMode) {
+                    if(appState.comparisonChart) {
+                        appState.comparisonChart.options.plugins.annotation.annotations = {};
+                        appState.comparisonChart.update();
+                    }
+                    return;
+                }
+
+                const annotations = {};
+
+                // Main periods annotations
+                periods.forEach(p => {
+                    const start = appState.periodTimes[p].start;
+                    const end = appState.periodTimes[p].end;
+                    if (start >= end) return;
+                    annotations[`box-period-${p}`] = {
+                        type: 'box',
+                        xMin: start,
+                        xMax: end,
+                        borderColor: 'rgba(67, 56, 202, 0.4)',
+                        borderWidth: 1,
+                        backgroundColor: 'rgba(67, 56, 202, 0.05)',
+                    };
+                });
+                
+                // Specific adjustments annotations for Direct Scaling mode
+                if (appState.analysisMode === 'direct-scaling') {
+                    appState.specificAdjustments.forEach((adj, i) => {
+                        const start = parseFloat(adj.start);
+                        const end = parseFloat(adj.end);
+                        if (isNaN(start) || isNaN(end) || start >= end) return;
+
+                        annotations[`box-adj-${i}`] = {
+                            type: 'box',
+                            xMin: start,
+                            xMax: end,
+                            borderColor: 'rgba(217, 70, 239, 0.6)',
+                            borderWidth: 2,
+                            borderDash: [6, 6],
+                            backgroundColor: 'rgba(217, 70, 239, 0.1)',
+                        };
+                    });
+                }
+
+                appState.comparisonChart.options.plugins.annotation.annotations = annotations;
+                appState.comparisonChart.update();
+            }
+
+            const initComparisonChart = () => {
+                const ctx = document.getElementById('comparison-chart').getContext('2d');
+                appState.comparisonChart = new Chart(ctx, {
+                    type: 'line',
+                    data: { datasets: [
+                        { label: 'Seed Accel.', data: [], borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
+                        { label: 'Numerical Accel.', data: [], borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
+                        { label: 'Final Bedrock Accel.', data: [], borderWidth: 2.5, pointRadius: 0, tension: 0.1 }
+                    ]},
+                    options: { 
+                        responsive: true, maintainAspectRatio: false, parsing: false, animation: { duration: 250 },
+                        interaction: { mode: 'index', intersect: false },
+                        scales: { 
+                            x: { type: 'linear', title: { display: true, text: 'Time (s)' }, min: 0 }, 
+                            y: { title: { display: true, text: 'Acceleration (g)' } } 
+                        },
+                        plugins: { 
+                            legend: { labels: {} },
+                            annotation: { annotations: {} }
+                        },
+                    }
+                });
+                applyChartStyles();
+                updateChartTheme();
+            };
+
+            const adjustLayerOrder = (datasetIndex, action) => {
+                const currentOrder = appState.layerOrder;
+                const currentIndex = currentOrder.indexOf(datasetIndex);
+                if (currentIndex === -1) return;
+                currentOrder.splice(currentIndex, 1);
+                if (action === 'bring-forward') currentOrder.splice(Math.max(0, currentIndex - 1), 0, datasetIndex);
+                else if (action === 'send-backward') currentOrder.splice(Math.min(currentOrder.length, currentIndex + 1), 0, datasetIndex);
+                else if (action === 'bring-front') currentOrder.unshift(datasetIndex);
+                else if (action === 'send-back') currentOrder.push(datasetIndex);
+                appState.layerOrder = currentOrder;
+                updateComparisonChart();
+            };
+
+            const applyChartStyles = () => {
+                if (!appState.comparisonChart) return;
+                const chart = appState.comparisonChart;
+                const styleMap = { 'solid': [], 'dashed': [5, 5], 'dotted': [1, 2] };
+                const datasetMap = {
+                    0: chart.data.datasets.find(ds => ds.label === 'Seed Accel.'),
+                    1: chart.data.datasets.find(ds => ds.label === 'Numerical Accel.'),
+                    2: chart.data.datasets.find(ds => ds.label === 'Final Bedrock Accel.')
+                };
+                chart.data.datasets = appState.layerOrder.map(index => datasetMap[index]).filter(Boolean);
+                for (let i = 0; i < 3; i++) {
+                    if (datasetMap[i]) {
+                        datasetMap[i].borderColor = document.getElementById(`color-${i}`).value;
+                        datasetMap[i].borderDash = styleMap[document.getElementById(`style-${i}`).value];
+                    }
+                }
+                chart.update('none');
+            };
+            
+            document.querySelectorAll('#chart-controls input, #chart-controls select').forEach(el => el.addEventListener('input', applyChartStyles));
+            document.querySelectorAll('.btn-layer').forEach(btn => btn.addEventListener('click', (e) => adjustLayerOrder(parseInt(e.currentTarget.dataset.idx), e.currentTarget.dataset.action)));
+
+            const updateComparisonChart = () => {
+                if (!appState.comparisonChart) return;
+                const timeInterval = parseFloat(timeIntervalInput.value);
+                const format = (data) => data ? data.map((y, i) => ({ x: i * timeInterval, y })) : [];
+                
+                appState.comparisonChart.data.datasets.forEach(ds => {
+                    if (ds.label === 'Seed Accel.') ds.data = format(appState.seedData);
+                    if (ds.label === 'Final Bedrock Accel.') ds.data = format(appState.finalBedrockData);
+                    
+                    if (ds.label === 'Numerical Accel.') {
+                        const hasNumerical = !!appState.numericalData;
+                        ds.data = format(appState.numericalData);
+                        ds.hidden = (appState.analysisMode === 'direct-scaling' || !hasNumerical);
+                    }
+                });
+                updateChartAnnotations();
+                applyChartStyles();
+            };
+            
+            initComparisonChart();
+            periods.forEach(renderPeriodTabContent);
+            updateControlStates();
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.tab-btn, .tab-content').forEach(el => el.classList.remove('active'));
+                    btn.classList.add('active');
+                    document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+                });
+            });
+            document.getElementById('collapsible-header').addEventListener('click', () => {
+                 document.getElementById('collapsible-content').classList.toggle('open');
+                 document.getElementById('collapsible-icon').classList.toggle('open');
+            });
+            
+        });
+    </script>
+</body>
+</html>
+

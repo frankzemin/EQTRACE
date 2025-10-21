@@ -1,0 +1,2358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Earthquake Interpolation - Seismology Tool</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #f8f9fa; /* Light grey background */
+            --secondary: #e9ecef; /* Slightly darker grey */
+            --accent: #007bff; /* Vibrant blue */
+            --light: #ffffff; /* White for panels */
+            --dark: #212529; /* Dark text */
+            --success: #28a745; /* Green */
+            --warning: #ffc107; /* Amber */
+            --danger: #dc3545; /* Red */
+            --grid-color: rgba(0, 0, 0, 0.1);
+            --panel-bg: rgba(255, 255, 255, 0.9);
+            --canvas-bg: #ffffff;
+            --step-active: #007bff;
+            --step-complete: #28a745;
+            --x-axis-color: #fd7e14; /* Orange */
+            --y-axis-color: #17a2b8; /* Teal/Cyan */
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: var(--primary);
+            color: var(--dark);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+            transition: all 0.5s ease;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        /* Header Styles */
+        header {
+            background: var(--light);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid #dee2e6;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.5s ease;
+        }
+        header::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent), var(--y-axis-color));
+        }
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .logo {
+            font-size: 2rem;
+            color: var(--accent);
+            animation: pulse 2s infinite;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .title-section h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+            color: var(--dark);
+            animation: fadeIn 1s ease;
+        }
+        .title-section p {
+            font-size: 1rem;
+            color: #495057;
+            max-width: 600px;
+        }
+        /* Instructions Section */
+        .instructions-section {
+            flex: 1;
+            min-width: 300px;
+            background: var(--secondary);
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #ced4da;
+        }
+        .instructions-section h3 {
+            color: var(--accent);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.1rem;
+        }
+        .instructions-section ul {
+            padding-left: 20px;
+        }
+        .instructions-section li {
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            color: #343a40;
+        }
+        /* Workflow Steps */
+        .workflow-steps {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+            position: relative;
+        }
+        .workflow-steps::before {
+            content: "";
+            position: absolute;
+            top: 18px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #dee2e6;
+            z-index: 1;
+            transition: all 0.5s ease;
+        }
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 2;
+            position: relative;
+        }
+        .step-number {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--light);
+            border: 3px solid #ced4da;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
+        }
+        .step.active .step-number {
+            background: var(--step-active);
+            border-color: var(--step-active);
+            color: white;
+            transform: scale(1.1);
+            animation: bounce 0.5s ease;
+        }
+        .step.complete .step-number {
+            background: var(--step-complete);
+            border-color: var(--step-complete);
+            color: white;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        .step-label {
+            text-align: center;
+            font-size: 0.85rem;
+            max-width: 100px;
+            color: #495057;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .step.active .step-label {
+            color: var(--accent);
+            font-weight: 600;
+        }
+        .step.complete .step-label {
+            color: var(--success);
+        }
+        /* Main Content Layout */
+        .main-content {
+            margin-bottom: 20px;
+        }
+
+        .bottom-layout-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        /* Panel Styles */
+        .panel {
+            background: var(--panel-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid #dee2e6;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            animation: slideIn 0.5s ease;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .panel:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+            border-color: #adb5bd;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .panel-header h2 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .panel-header h2 i {
+            color: var(--accent);
+        }
+        /* Canvas Container */
+        .canvas-container {
+            height: 600px;
+            position: relative;
+            overflow: hidden;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        .canvas-toolbar {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            background: var(--secondary);
+            border-bottom: 1px solid #dee2e6;
+        }
+        .zoom-controls {
+            display: flex;
+            gap: 8px;
+        }
+        .zoom-btn {
+            background: var(--light);
+            border: 1px solid #ced4da;
+            color: var(--dark);
+            width: 32px;
+            height: 32px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .zoom-btn:hover {
+            background: var(--accent);
+            color: white;
+            transform: scale(1.1);
+        }
+        .zoom-display {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--light);
+            padding: 0 10px;
+            border-radius: 5px;
+            border: 1px solid #ced4da;
+            font-size: 0.9rem;
+        }
+        #diagramCanvas {
+            background: var(--canvas-bg);
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+            border: 1px solid #dee2e6;
+        }
+        .axis-label {
+            position: absolute;
+            color: var(--dark);
+            font-size: 0.9rem;
+            font-weight: 500;
+            pointer-events: none;
+        }
+        .x-axis-label {
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--x-axis-color);
+        }
+        .y-axis-label {
+            top: 50%;
+            left: 15px;
+            transform: translateY(-50%) rotate(-90deg);
+            color: var(--y-axis-color);
+        }
+        /* Controls Container */
+        .controls-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            font-size: 0.95rem;
+            color: var(--dark);
+        }
+        input, select, button {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 5px;
+            border: 1px solid #ced4da;
+            background: var(--light);
+            color: var(--dark);
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+        }
+        /* Button Styles */
+        .btn {
+            padding: 12px 15px;
+            border: none;
+            border-radius: 5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        .btn-warning {
+            background: var(--warning);
+            color: #212529;
+        }
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-x-axis {
+            background: var(--x-axis-color);
+            color: white;
+        }
+        .btn-y-axis {
+            background: var(--y-axis-color);
+            color: white;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .btn-next {
+            background: var(--accent);
+            color: white;
+        }
+        .btn-next i {
+            margin-left: 8px;
+        }
+        .btn-back {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-back i {
+            margin-right: 8px;
+        }
+        .navigation-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 15px;
+        }
+        /* Slider Container */
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .slider-container input[type="range"] {
+            flex: 1;
+            height: 7px;
+            -webkit-appearance: none;
+            background: #dee2e6;
+            border-radius: 4px;
+            outline: none;
+        }
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+        .slider-value {
+            min-width: 50px;
+            text-align: center;
+            background: var(--secondary);
+            padding: 6px;
+            border-radius: 5px;
+            border: 1px solid #ced4da;
+            font-weight: 600;
+            color: var(--accent);
+            font-size: 0.9rem;
+        }
+        /* Points List */
+        .points-list {
+            max-height: 150px;
+            overflow-y: auto;
+            background: var(--secondary);
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            border: 1px solid #dee2e6;
+        }
+        .points-list div {
+            padding: 8px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+        .points-list div:last-child {
+            border-bottom: none;
+        }
+        .points-list div:hover {
+            background: #e9ecef;
+        }
+        .remove-point:hover {
+            background: rgba(220, 53, 69, 0.1);
+        }
+        /* Status Bar */
+        .status-bar {
+            background: var(--light);
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1rem;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #6c757d;
+            border-top: 1px solid #dee2e6;
+        }
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .bottom-layout-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+                align-items: center;
+            }
+            .workflow-steps {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+            .workflow-steps::before {
+                display: none;
+            }
+            .navigation-buttons {
+                flex-direction: column;
+            }
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            header {
+                padding: 15px 10px;
+            }
+            .title-section h1 {
+                font-size: 1.5rem;
+            }
+            .panel {
+                padding: 15px 12px;
+            }
+            .canvas-container {
+                height: 450px;
+            }
+        }
+        /* Calibration Points */
+        .calibration-point {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid white;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+        }
+        .calibration-point.x-min, .calibration-point.x-max {
+            background: var(--x-axis-color);
+        }
+        .calibration-point.y-min, .calibration-point.y-max {
+            background: var(--y-axis-color);
+        }
+        .calibration-point-label {
+            position: absolute;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 0 0 4px black;
+            pointer-events: none;
+            transform: translate(-50%, -100%);
+            margin-top: -5px;
+        }
+        /* Axis Interval Points */
+        .axis-interval-point {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+            transform: translate(-50%, -50%);
+            z-index: 9;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+        .axis-interval-point.x-axis {
+            background: var(--x-axis-color);
+        }
+        .axis-interval-point.y-axis {
+            background: var(--y-axis-color);
+        }
+        /* Phase Content */
+        .phase-content {
+            display: none;
+        }
+        .phase-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Progress Bar */
+        .progress-container {
+            margin: 15px 0;
+            background: #e9ecef;
+            border-radius: 8px;
+            height: 10px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), #0056b3);
+            width: 20%;
+            border-radius: 8px;
+            transition: width 0.5s ease;
+        }
+        /* Data Preview */
+        .data-preview {
+            max-height: 120px;
+            overflow-y: auto;
+            background: #e9ecef;
+            border-radius: 5px;
+            padding: 8px;
+            margin-top: 8px;
+            font-size: 0.85rem;
+            border: 1px solid #dee2e6;
+        }
+        .data-preview div {
+            padding: 5px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .data-preview div:last-child {
+            border-bottom: none;
+        }
+        /* Photo Adjustment Controls */
+        .photo-adjustment {
+            background: #e9ecef;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 12px;
+            border: 1px solid #dee2e6;
+        }
+        /* Phase-specific styles */
+        .phase-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding: 8px;
+            background: #e9ecef;
+            border-radius: 5px;
+        }
+        .phase-indicator i {
+            color: var(--accent);
+            font-size: 1rem;
+        }
+        /* NEW: Upload Box styles */
+        .upload-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            width: 100%;
+            min-height: 150px;
+            border: 2px dashed #ced4da;
+            border-radius: 8px;
+            background-color: var(--secondary);
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+            overflow: hidden;
+            padding: 1rem;
+        }
+        .upload-box:hover {
+            background-color: #e2e6ea;
+            border-color: var(--accent);
+        }
+        #upload-prompt i {
+            font-size: 2.5rem;
+            color: #adb5bd;
+            transition: color 0.2s ease-in-out;
+        }
+        .upload-box:hover #upload-prompt i {
+            color: var(--accent);
+        }
+        #image-preview {
+            max-width: 100%;
+            max-height: 200px;
+            object-fit: contain;
+            display: none;
+        }
+        .file-name {
+            margin-top: 10px;
+            color: var(--dark);
+            font-weight: 500;
+            text-align: center;
+            font-size: 0.9rem;
+            word-break: break-all;
+        }
+        /* Axis Interval Controls */
+        .axis-intervals {
+            background: #e9ecef;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 12px;
+            border: 1px solid #dee2e6;
+        }
+        .axis-interval-points {
+            margin-top: 8px;
+            max-height: 100px;
+            overflow-y: auto;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            border: 1px solid #dee2e6;
+        }
+        .axis-interval-points div {
+            padding: 4px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .axis-interval-points div:last-child {
+            border-bottom: none;
+        }
+        /* Points Table */
+        .points-table {
+            max-height: 150px;
+            overflow-y: auto;
+            margin-top: 12px;
+            background: #e9ecef;
+            border-radius: 5px;
+            padding: 8px;
+            border: 1px solid #dee2e6;
+        }
+        th, td {
+            padding: 6px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        tr:hover {
+            background: #dee2e6;
+        }
+        input[type="number"] {
+            border: 1px solid #ced4da;
+            background: var(--light);
+            color: var(--dark);
+        }
+        .action-btn:hover {
+            background: rgba(0, 123, 255, 0.1);
+        }
+        .delete-btn {
+            color: var(--danger);
+        }
+        .add-row-btn {
+            background: var(--light);
+            border: 1px solid #ced4da;
+            color: var(--dark);
+        }
+        .add-row-btn:hover {
+            background: var(--accent);
+            color: white;
+            transform: translateY(-2px);
+        }
+        /* Tables Container */
+        .tables-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .compact-table {
+            background: var(--light);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #dee2e6;
+            width: 100%;
+        }
+        /* Angle Adjustment Button */
+        .angle-adjustment-btn {
+            background: var(--warning);
+            color: #212529;
+            border: none;
+        }
+        .angle-adjustment-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        }
+        .angle-adjustment-btn.active {
+            background: var(--danger);
+            color: white;
+        }
+    </style>
+</head>
+<body class="theme-light">
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <div class="logo-section">
+                    <div class="logo">
+                        <svg width="100%" height="100%" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="32" cy="32" r="28" stroke="var(--accent)" stroke-width="4"></circle>
+                            <path d="M12 32L20 32L24 22L32 42L40 25L44 38L52 32" stroke="var(--dark)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                    </div>
+                    <div class="title-section">
+                        <h1>Earthquake Interpolation</h1>
+                        <p>A tool for digitizing seismology chart data</p>
+                    </div>
+                </div>
+            </div>
+            <div class="instructions-section">
+                <h3><i class="fas fa-info-circle"></i> Instructions</h3>
+                <ul>
+                    <li>Upload a clear image of your chart or graph</li>
+                    <li>Adjust brightness, contrast, rotation and tilt as needed</li>
+                    <li>Higher resolution images provide better accuracy</li>
+                </ul>
+            </div>
+        </header>
+        <div class="workflow-steps">
+            <div class="step active" id="step1">
+                <div class="step-number">1</div>
+                <div class="step-label">Import Image</div>
+            </div>
+            <div class="step" id="step2">
+                <div class="step-number">2</div>
+                <div class="step-label">Calibrate Axes</div>
+            </div>
+            <div class="step" id="step3">
+                <div class="step-number">3</div>
+                <div class="step-label">Select Data Points</div>
+            </div>
+            <div class="step" id="step4">
+                <div class="step-number">4</div>
+                <div class="step-label">Set Intervals</div>
+            </div>
+            <div class="step" id="step5">
+                <div class="step-number">5</div>
+                <div class="step-label">Export Data</div>
+            </div>
+        </div>
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <!-- Main Content Layout -->
+        <div class="main-content">
+            <div class="panel canvas-container">
+                <div class="canvas-toolbar">
+                    <div class="zoom-controls">
+                        <div class="zoom-btn" id="zoomIn">
+                            <i class="fas fa-search-plus"></i>
+                        </div>
+                        <div class="zoom-btn" id="zoomOut">
+                            <i class="fas fa-search-minus"></i>
+                        </div>
+                        <div class="zoom-btn" id="zoomReset">
+                            <i class="fas fa-expand"></i>
+                        </div>
+                    </div>
+                    <div class="zoom-display">
+                        <span>Zoom:</span>
+                        <span id="zoomLevel">100%</span>
+                    </div>
+                </div>
+                <canvas id="diagramCanvas"></canvas>
+                <div class="axis-label x-axis-label" id="canvasXLabel">X-Axis</div>
+                <div class="axis-label y-axis-label" id="canvasYLabel">Y-Axis</div>
+            </div>
+        </div>
+        <div class="bottom-layout-grid">
+            <div class="controls-container">
+                <!-- Phase 1: Import Image -->
+                <div class="panel phase-content active" id="phase1">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-upload"></i> Import Diagram</h2>
+                    </div>
+                    <div class="phase-indicator">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Upload your diagram and adjust its appearance</span>
+                    </div>
+                    <div class="form-group">
+                        <input type="file" id="imageUpload" accept="image/*" hidden>
+                        <label for="imageUpload" class="upload-box">
+                            <div id="upload-prompt">
+                                <i class="fas fa-upload"></i>
+                            </div>
+                            <img id="image-preview" src="#" alt="Image Preview"/>
+                        </label>
+                        <div id="fileName" class="file-name">No file selected</div>
+                    </div>
+                    <div class="photo-adjustment">
+                        <h3><i class="fas fa-sliders-h"></i> Photo Adjustment</h3>
+                        <div class="adjustment-controls">
+                            <div class="adjustment-control">
+                                <label for="brightness">Brightness</label>
+                                <input type="range" id="brightness" min="50" max="150" value="100">
+                            </div>
+                            <div class="adjustment-control">
+                                <label for="contrast">Contrast</label>
+                                <input type="range" id="contrast" min="50" max="150" value="100">
+                            </div>
+                            <div class="adjustment-control">
+                                <label for="rotation">Rotation</label>
+                                <input type="range" id="rotation" min="-10" max="10" value="0">
+                            </div>
+                            <div class="adjustment-control">
+                                <label for="tilt">Tilt</label>
+                                <input type="range" id="tilt" min="-10" max="10" value="0">
+                            </div>
+                        </div>
+                        <button id="resetAdjustment" class="btn btn-secondary" style="margin-top: 8px;">
+                            <i class="fas fa-redo"></i> Reset Adjustments
+                        </button>
+                    </div>
+                    <div class="navigation-buttons">
+                        <button id="nextToPhase2" class="btn btn-next">
+                            Next: Calibrate Axes <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <!-- Phase 2: Calibrate Axes -->
+                <div class="panel phase-content" id="phase2">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-sliders-h"></i> Axis Calibration</h2>
+                    </div>
+                    <div class="phase-indicator">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Click on axis min/max points and set real values</span>
+                    </div>
+                    <div class="form-group">
+                        <label>X-Axis Label</label>
+                        <input type="text" id="xAxisLabel" value="Time (s)" placeholder="e.g., Time (s)">
+                    </div>
+                    <div class="form-group">
+                        <label>Y-Axis Label</label>
+                        <input type="text" id="yAxisLabel" value="Acceleration (m/s²)" placeholder="e.g., Acceleration">
+                    </div>
+                    <div class="form-group">
+                        <label>X-Axis Range</label>
+                        <div style="display: flex; gap: 8px; margin-top: 6px;">
+                            <input type="number" id="xMinValue" placeholder="Min Value" value="0">
+                            <input type="number" id="xMaxValue" placeholder="Max Value" value="10">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Y-Axis Range</label>
+                        <div style="display: flex; gap: 8px; margin-top: 6px;">
+                            <input type="number" id="yMinValue" placeholder="Min Value" value="0">
+                            <input type="number" id="yMaxValue" placeholder="Max Value" value="100">
+                        </div>
+                    </div>
+                    <div class="axis-intervals">
+                        <h3><i class="fas fa-ruler"></i> Axis Intervals</h3>
+                        <div class="axis-interval-controls">
+                            <div class="axis-interval-control">
+                                <label for="xAxisIntervals">X-Axis Intervals</label>
+                                <input type="number" id="xAxisIntervals" placeholder="Number of intervals" value="5" min="1" max="20">
+                            </div>
+                            <div class="axis-interval-control">
+                                <label for="yAxisIntervals">Y-Axis Intervals</label>
+                                <input type="number" id="yAxisIntervals" placeholder="Number of intervals" value="5" min="1" max="20">
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-top: 10px;">
+                            <button id="setXAxisIntervals" class="btn btn-x-axis">
+                                <i class="fas fa-arrows-alt-h"></i> Set X-Axis Points
+                            </button>
+                            <button id="setYAxisIntervals" class="btn btn-y-axis">
+                                <i class="fas fa-arrows-alt-v"></i> Set Y-Axis Points
+                            </button>
+                        </div>
+                        <div class="axis-interval-points" id="axisIntervalPoints">
+                            <div>No axis intervals set</div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <button id="resetCalibration" class="btn btn-warning">
+                            <i class="fas fa-redo"></i> Reset Calibration
+                        </button>
+                    </div>
+                    <div class="navigation-buttons">
+                        <button id="backToPhase1" class="btn btn-back">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                        <button id="nextToPhase3" class="btn btn-next">
+                            Next: Select Data Points <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <!-- Phase 3: Select Data Points -->
+                <div class="panel phase-content" id="phase3">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-mouse-pointer"></i> Select Data Points</h2>
+                    </div>
+                    <div class="phase-indicator">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Click on data points along your curve</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Instructions</label>
+                        <p>Click on the data points along your curve to select them. Points will appear in blue.</p>
+                    </div>
+                    <div class="points-list" id="pointsList">
+                        <div>No points selected yet</div>
+                    </div>
+                    <button id="angleAdjustmentBtn" class="angle-adjustment-btn">
+                        <i class="fas fa-adjust"></i> Toggle Angle Adjustment Mode
+                    </button>
+                    <div class="form-group">
+                        <button id="clearPoints" class="btn btn-danger">
+                            <i class="fas fa-trash-alt"></i> Clear All Points
+                        </button>
+                    </div>
+                    <div class="navigation-buttons">
+                        <button id="backToPhase2" class="btn btn-back">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                        <button id="nextToPhase4" class="btn btn-next">
+                            Next: Set Intervals <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <!-- Phase 4: Set Intervals -->
+                <div class="panel phase-content" id="phase4">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-wave-square"></i> Interpolation Settings</h2>
+                    </div>
+                    <div class="phase-indicator">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Set interpolation interval and generate points</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Segments Between Points</label>
+                        <div class="slider-container">
+                            <input type="range" id="segmentsSlider" min="1" max="100" step="1" value="50">
+                            <span class="slider-value" id="segmentsValue">50</span>
+                        </div>
+                        <p style="margin-top: 8px; font-size: 0.85rem;">
+                            Segments between each pair of points: <span id="segmentsDisplay">50</span>
+                        </p>
+                    </div>
+                    <div class="form-group">
+                        <button id="interpolateBtn" class="btn btn-success">
+                            <i class="fas fa-calculator"></i> Interpolate Points
+                        </button>
+                        <!-- Updated Clear/Reset Button -->
+                        <button id="resetInterpolationBtn" class="btn btn-secondary" style="margin-top: 10px;">
+                            <i class="fas fa-undo"></i> Reset Interpolation
+                        </button>
+                    </div>
+                    <!-- New element to display the time interval -->
+                    <div class="form-group" id="timeIntervalInfo" style="display: none;">
+                        <label>Calculated Time Interval</label>
+                        <div class="slider-value" id="timeIntervalDisplay" style="width: 100%; text-align: center; background-color: var(--light); border: 1px solid var(--success); color: var(--success);"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Interpolated Points Preview</label>
+                        <div class="data-preview" id="interpolatedPreview">
+                            <div>No interpolation performed yet</div>
+                        </div>
+                    </div>
+                    <div class="navigation-buttons">
+                        <button id="backToPhase3" class="btn btn-back">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                        <button id="nextToPhase5" class="btn btn-next">
+                            Next: Export Data <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <!-- Phase 5: Export Data -->
+                <div class="panel phase-content" id="phase5">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-file-export"></i> Export Data</h2>
+                    </div>
+                    <div class="phase-indicator">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Review, customize labels, and export your digitized data</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Customize Export Labels</label>
+                        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
+                            <input type="text" id="exportXAxisLabel" placeholder="X-Axis Label">
+                            <input type="text" id="exportYAxisLabel" placeholder="Y-Axis Label">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Data Summary</label>
+                        <div style="background: var(--secondary); color: var(--dark); padding: 12px; border-radius: 5px; margin-top: 8px; border: 1px solid #dee2e6;">
+                            <p><strong>Original Points:</strong> <span id="originalCount">0</span></p>
+                            <p><strong>Interpolated Points:</strong> <span id="interpolatedCount">0</span></p>
+                            <p id="timeIntervalSummaryContainer" style="display: none;"><strong>Time Interval (s):</strong> <span id="timeIntervalSummary">0</span></p>
+                            <p><strong>Total Points:</strong> <span id="totalCount">0</span></p>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Export Options</label>
+                        <button id="exportBtn" class="btn btn-warning">
+                            <i class="fas fa-file-csv"></i> Export as CSV
+                        </button>
+                    </div>
+                    <div class="form-group">
+                        <label>Preview Data</label>
+                        <div class="data-preview" id="exportPreview">
+                            <div>No data to preview</div>
+                        </div>
+                    </div>
+                    <div class="navigation-buttons">
+                        <button id="backToPhase4" class="btn btn-back">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                    </div>
+                </div>
+            </div> <!-- End Controls Container -->
+            <div class="tables-container">
+                <!-- Axis Intervals Table -->
+                <div class="compact-table axis-intervals-table">
+                    <div class="table-header">
+                        <h3><i class="fas fa-ruler-combined"></i> Axis Intervals</h3>
+                        <div class="table-controls">
+                            <button id="updateAxisIntervalsBtn" class="btn btn-primary">
+                                <i class="fas fa-sync-alt"></i> Update
+                            </button>
+                        </div>
+                    </div>
+                    <div style="overflow-x: auto; max-height: 200px;">
+                        <table id="axisIntervalsTable">
+                            <thead>
+                                <tr>
+                                    <th>Axis</th>
+                                    <th>Pixel X</th>
+                                    <th>Pixel Y</th>
+                                    <th>Real Value</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="axisIntervalsTableBody">
+                                <tr>
+                                    <td colspan="5" style="text-align: center;">No axis intervals set</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- Coordinates Table -->
+                <div class="compact-table coordinates-table">
+                    <div class="table-header">
+                        <h3><i class="fas fa-table"></i> Coordinates</h3>
+                        <div class="table-controls">
+                            <button id="updateCoordinatesBtn" class="btn btn-primary">
+                                <i class="fas fa-sync-alt"></i> Update
+                            </button>
+                        </div>
+                    </div>
+                    <div style="overflow-x: auto; max-height: 200px;">
+                        <table id="coordinatesTable">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>X-Pixel</th>
+                                    <th>Y-Pixel</th>
+                                    <th>X-Value</th>
+                                    <th>Y-Value</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="coordinatesTableBody">
+                                <tr>
+                                    <td colspan="6" style="text-align: center;">No points added yet</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <button id="addRowBtn" class="add-row-btn">
+                        <i class="fas fa-plus-circle"></i> Add New Point
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="status-bar" id="statusBar">
+            Ready to import diagram. Please select an image file.
+        </div>
+        <footer>
+            <p>&copy; 2025 Earthquake Interpolation. All rights reserved.</p>
+        </footer>
+    </div>
+    <script>
+        // Global variables
+        const canvas = document.getElementById('diagramCanvas');
+        const ctx = canvas.getContext('2d');
+        let backgroundImage = null;
+        let points = [];
+        let interpolatedPoints = [];
+        let isCalibrated = false;
+        let currentPhase = 1;
+        let zoomLevel = 1;
+        let offsetX = 0;
+        let offsetY = 0;
+        let isDragging = false;
+        let lastX = 0;
+        let lastY = 0;
+        let brightness = 100;
+        let contrast = 100;
+        let rotation = 0;
+        let tilt = 0;
+        let segmentsValue = 50;
+        let isAngleAdjustmentMode = false;
+        let calculatedTimeStep = 0; // To store the calculated time interval
+        // Calibration points
+        let calibrationPoints = {
+            xMin: null,
+            xMax: null,
+            yMin: null,
+            yMax: null
+        };
+        // Axis interval points
+        let xAxisIntervals = [];
+        let yAxisIntervals = [];
+        // Axis configuration
+        let axisConfig = {
+            x: {
+                label: "Time (s)",
+                minValue: 0,
+                maxValue: 10
+            },
+            y: {
+                label: "Acceleration (m/s²)",
+                minValue: 0,
+                maxValue: 100
+            }
+        };
+        // DOM Elements
+        const imageUpload = document.getElementById('imageUpload');
+        const nextToPhase2 = document.getElementById('nextToPhase2');
+        const nextToPhase3 = document.getElementById('nextToPhase3');
+        const nextToPhase4 = document.getElementById('nextToPhase4');
+        const nextToPhase5 = document.getElementById('nextToPhase5');
+        const backToPhase1 = document.getElementById('backToPhase1');
+        const backToPhase2 = document.getElementById('backToPhase2');
+        const backToPhase3 = document.getElementById('backToPhase3');
+        const backToPhase4 = document.getElementById('backToPhase4');
+        const resetCalibration = document.getElementById('resetCalibration');
+        const clearPoints = document.getElementById('clearPoints');
+        const interpolateBtn = document.getElementById('interpolateBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const segmentsSlider = document.getElementById('segmentsSlider');
+        const segmentsValueDisplay = document.getElementById('segmentsValue');
+        const segmentsDisplay = document.getElementById('segmentsDisplay');
+        const pointsList = document.getElementById('pointsList');
+        const interpolatedPreview = document.getElementById('interpolatedPreview');
+        const exportPreview = document.getElementById('exportPreview');
+        const statusBar = document.getElementById('statusBar');
+        const originalCount = document.getElementById('originalCount');
+        const interpolatedCount = document.getElementById('interpolatedCount');
+        const totalCount = document.getElementById('totalCount');
+        const progressBar = document.getElementById('progressBar');
+        const zoomIn = document.getElementById('zoomIn');
+        const zoomOut = document.getElementById('zoomOut');
+        const zoomReset = document.getElementById('zoomReset');
+        const zoomLevelDisplay = document.getElementById('zoomLevel');
+        const resetAdjustment = document.getElementById('resetAdjustment');
+        const setXAxisIntervals = document.getElementById('setXAxisIntervals');
+        const setYAxisIntervals = document.getElementById('setYAxisIntervals');
+        const xAxisIntervalsInput = document.getElementById('xAxisIntervals');
+        const yAxisIntervalsInput = document.getElementById('yAxisIntervals');
+        const axisIntervalPoints = document.getElementById('axisIntervalPoints');
+        const fileName = document.getElementById('fileName');
+        const imagePreview = document.getElementById('image-preview');
+        const uploadPrompt = document.getElementById('upload-prompt');
+        const updateCoordinatesBtn = document.getElementById('updateCoordinatesBtn');
+        const addRowBtn = document.getElementById('addRowBtn');
+        const coordinatesTableBody = document.getElementById('coordinatesTableBody');
+        const updateAxisIntervalsBtn = document.getElementById('updateAxisIntervalsBtn');
+        const axisIntervalsTableBody = document.getElementById('axisIntervalsTableBody');
+        const angleAdjustmentBtn = document.getElementById('angleAdjustmentBtn');
+        const exportXAxisLabel = document.getElementById('exportXAxisLabel');
+        const exportYAxisLabel = document.getElementById('exportYAxisLabel');
+        // Updated button for resetting interpolation
+        const resetInterpolationBtn = document.getElementById('resetInterpolationBtn');
+        // New elements for displaying time interval
+        const timeIntervalInfo = document.getElementById('timeIntervalInfo');
+        const timeIntervalDisplay = document.getElementById('timeIntervalDisplay');
+        const timeIntervalSummaryContainer = document.getElementById('timeIntervalSummaryContainer');
+        const timeIntervalSummary = document.getElementById('timeIntervalSummary');
+        
+        // Photo adjustment controls
+        const brightnessControl = document.getElementById('brightness');
+        const contrastControl = document.getElementById('contrast');
+        const rotationControl = document.getElementById('rotation');
+        const tiltControl = document.getElementById('tilt');
+        // Axis configuration inputs
+        const xAxisLabel = document.getElementById('xAxisLabel');
+        const yAxisLabel = document.getElementById('yAxisLabel');
+        const xMinValue = document.getElementById('xMinValue');
+        const xMaxValue = document.getElementById('xMaxValue');
+        const yMinValue = document.getElementById('yMinValue');
+        const yMaxValue = document.getElementById('yMaxValue');
+        // Display elements
+        const canvasXLabel = document.getElementById('canvasXLabel');
+        const canvasYLabel = document.getElementById('canvasYLabel');
+
+        // Initialize canvas
+        function initCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            drawCanvas();
+        }
+        // Clamp a value between a min and max
+        function clamp(value, min, max) {
+            return Math.min(Math.max(value, min), max);
+        }
+        // Draw canvas content
+        function drawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Save context for transformations
+            ctx.save();
+            // Apply zoom and pan
+            ctx.translate(offsetX, offsetY);
+            ctx.scale(zoomLevel, zoomLevel);
+            // Apply photo adjustments
+            if (backgroundImage) {
+                // Apply brightness and contrast
+                ctx.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
+                // Apply rotation and tilt
+                const centerX = backgroundImage.width / 2;
+                const centerY = backgroundImage.height / 2;
+                ctx.translate(centerX, centerY);
+                ctx.rotate(rotation * Math.PI / 180);
+                ctx.transform(1, tilt * 0.01, 0, 1, 0, 0);
+                ctx.translate(-centerX, -centerY);
+                // Draw image
+                ctx.drawImage(backgroundImage, 0, 0, backgroundImage.width, backgroundImage.height);
+                // Reset filter
+                ctx.filter = 'none';
+            }
+            // Draw grid if calibrated
+            if (isCalibrated) {
+                drawGrid();
+            }
+            // Draw calibration points and labels
+            if (calibrationPoints.xMin) {
+                drawCalibrationPoint(calibrationPoints.xMin.x, calibrationPoints.xMin.y, 'x-min');
+                drawCalibrationPointLabel(calibrationPoints.xMin.x, calibrationPoints.xMin.y, 'Min');
+            }
+            if (calibrationPoints.xMax) {
+                drawCalibrationPoint(calibrationPoints.xMax.x, calibrationPoints.xMax.y, 'x-max');
+                drawCalibrationPointLabel(calibrationPoints.xMax.x, calibrationPoints.xMax.y, 'Max');
+            }
+            if (calibrationPoints.yMin) {
+                drawCalibrationPoint(calibrationPoints.yMin.x, calibrationPoints.yMin.y, 'y-min');
+                drawCalibrationPointLabel(calibrationPoints.yMin.x, calibrationPoints.yMin.y, 'Min');
+            }
+            if (calibrationPoints.yMax) {
+                drawCalibrationPoint(calibrationPoints.yMax.x, calibrationPoints.yMax.y, 'y-max');
+                drawCalibrationPointLabel(calibrationPoints.yMax.x, calibrationPoints.yMax.y, 'Max');
+            }
+            // Draw axis interval points
+            xAxisIntervals.forEach(point => {
+                drawAxisIntervalPoint(point.x, point.y, 'x-axis');
+            });
+            yAxisIntervals.forEach(point => {
+                drawAxisIntervalPoint(point.x, point.y, 'y-axis');
+            });
+            // Draw original points (Blue)
+            points.forEach(point => {
+                drawDataPoint(point.x, point.y, '#007bff'); 
+            });
+            // Draw interpolated points (Green) - Drawn AFTER original points
+            interpolatedPoints.forEach(point => {
+                drawInterpolatedPoint(point.x, point.y, '#28a745');
+            });
+            // Draw connecting lines
+            if (points.length > 1) {
+                drawLines(points, '#007bff', 2); // Original points line
+            }
+            if (interpolatedPoints.length > 1) {
+                drawLines(interpolatedPoints, '#28a745', 1); // Interpolated points line (thinner)
+            }
+            // Restore context
+            ctx.restore();
+        }
+        // Draw a calibration point
+        function drawCalibrationPoint(x, y, type) {
+            ctx.beginPath();
+            ctx.arc(x, y, 9, 0, Math.PI * 2); 
+            ctx.fillStyle = type.includes('x') ? 'var(--x-axis-color)' : 'var(--y-axis-color)'; 
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff'; 
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+         // Draw a label for a calibration point
+        function drawCalibrationPointLabel(x, y, label) {
+            ctx.fillStyle = '#ffffff'; 
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            // Position label slightly above the point
+            ctx.fillText(label, x, y - 12);
+            ctx.strokeStyle = '#000000'; 
+            ctx.lineWidth = 0.5;
+            ctx.strokeText(label, x, y - 12);
+        }
+        // Draw an axis interval point
+        function drawAxisIntervalPoint(x, y, axis) {
+            ctx.beginPath();
+            ctx.arc(x, y, 6, 0, Math.PI * 2);
+            ctx.fillStyle = axis === 'x-axis' ? 'var(--x-axis-color)' : 'var(--y-axis-color)'; 
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff'; 
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        }
+        // Draw a data point (original)
+        function drawDataPoint(x, y, color = '#007bff') { 
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff'; 
+            ctx.lineWidth = 1.5; 
+            ctx.stroke();
+        }
+        // Draw an interpolated point
+        function drawInterpolatedPoint(x, y, color = '#28a745') {
+            ctx.beginPath();
+            ctx.arc(x, y, 2, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff'; 
+            ctx.lineWidth = 1; 
+            ctx.stroke();
+        }
+        // Draw connecting lines
+        function drawLines(pointsArray, color, width = 2) {
+            if (pointsArray.length < 2) return;
+            ctx.beginPath();
+            ctx.moveTo(pointsArray[0].x, pointsArray[0].y);
+            for (let i = 1; i < pointsArray.length; i++) {
+                ctx.lineTo(pointsArray[i].x, pointsArray[i].y);
+            }
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+        // Draw grid based on calibration
+        function drawGrid() {
+            if (!calibrationPoints.xMin || !calibrationPoints.xMax ||
+                !calibrationPoints.yMin || !calibrationPoints.yMax) return;
+            ctx.strokeStyle = 'var(--grid-color)';
+            ctx.lineWidth = 1;
+            // Draw vertical grid lines (X-axis)
+            const xStep = (calibrationPoints.xMax.x - calibrationPoints.xMin.x) / 10;
+            for (let i = 0; i <= 10; i++) {
+                const x = calibrationPoints.xMin.x + i * xStep;
+                ctx.beginPath();
+                ctx.moveTo(x, calibrationPoints.yMin.y);
+                ctx.lineTo(x, calibrationPoints.yMax.y);
+                ctx.stroke();
+            }
+            // Draw horizontal grid lines (Y-axis)
+            const yStep = (calibrationPoints.yMax.y - calibrationPoints.yMin.y) / 10;
+            for (let i = 0; i <= 10; i++) {
+                const y = calibrationPoints.yMin.y + i * yStep;
+                ctx.beginPath();
+                ctx.moveTo(calibrationPoints.xMin.x, y);
+                ctx.lineTo(calibrationPoints.xMax.x, y);
+                ctx.stroke();
+            }
+        }
+        
+        // --- UPDATED LOGIC START ---
+        // Convert pixel to real coordinates
+        // This function is now robust and handles inverted Y-axis, negative values, and any calibration point order.
+        function pixelToReal(x, y) {
+            if (!isCalibrated) return { x: 0, y: 0 };
+
+            // X-axis: Determine left-most and right-most pixel coordinates and calculate the ratio
+            const pixelXLeft = Math.min(calibrationPoints.xMin.x, calibrationPoints.xMax.x);
+            const pixelXRight = Math.max(calibrationPoints.xMin.x, calibrationPoints.xMax.x);
+            const pixelXRange = pixelXRight - pixelXLeft;
+            const xRatio = pixelXRange === 0 ? 0 : (x - pixelXLeft) / pixelXRange;
+            const realX = axisConfig.x.minValue + xRatio * (axisConfig.x.maxValue - axisConfig.x.minValue);
+
+            // Y-axis: Determine top-most and bottom-most pixel coordinates and calculate the ratio
+            const pixelYTop = Math.min(calibrationPoints.yMin.y, calibrationPoints.yMax.y);
+            const pixelYBottom = Math.max(calibrationPoints.yMin.y, calibrationPoints.yMax.y);
+            const pixelYRange = pixelYBottom - pixelYTop;
+            const yRatio = pixelYRange === 0 ? 0 : (y - pixelYTop) / pixelYRange; // yRatio is 0 at top, 1 at bottom
+
+            // Because canvas Y-coordinates are inverted (0 is at the top), we use (1 - yRatio)
+            // to correctly map the visual position to the real-world value.
+            // A click at the top (yRatio=0) maps to maxValue.
+            // A click at the bottom (yRatio=1) maps to minValue.
+            const realY = axisConfig.y.minValue + (1 - yRatio) * (axisConfig.y.maxValue - axisConfig.y.minValue);
+
+            return { x: realX, y: realY };
+        }
+
+        // Convert real to pixel coordinates
+        // This function is the inverse of pixelToReal and is also robust.
+        function realToPixel(realX, realY) {
+            if (!isCalibrated) return { x: 0, y: 0 };
+
+            // X-axis: Convert real value to a ratio of the total real range
+            const realXRange = axisConfig.x.maxValue - axisConfig.x.minValue;
+            const xRatio = realXRange === 0 ? 0 : (realX - axisConfig.x.minValue) / realXRange;
+            // Apply this ratio to the pixel range
+            const pixelXLeft = Math.min(calibrationPoints.xMin.x, calibrationPoints.xMax.x);
+            const pixelXRight = Math.max(calibrationPoints.xMin.x, calibrationPoints.xMax.x);
+            const x = pixelXLeft + xRatio * (pixelXRight - pixelXLeft);
+
+            // Y-axis: Convert real value to a ratio of the total real range
+            const realYRange = axisConfig.y.maxValue - axisConfig.y.minValue;
+            const yRatio = realYRange === 0 ? 0 : (realY - axisConfig.y.minValue) / realYRange; // yRatio is 0 for minValue, 1 for maxValue
+
+            // Apply the inverse of this ratio (1 - yRatio) to the pixel range to account for inverted canvas Y-axis
+            const pixelYTop = Math.min(calibrationPoints.yMin.y, calibrationPoints.yMax.y);
+            const pixelYBottom = Math.max(calibrationPoints.yMin.y, calibrationPoints.yMax.y);
+            const y = pixelYTop + (1 - yRatio) * (pixelYBottom - pixelYTop);
+
+            return { x: x, y: y };
+        }
+        // --- UPDATED LOGIC END ---
+
+        // Set X-axis intervals
+        function setXAxisIntervalsPoints() {
+            if (!isCalibrated) {
+                statusBar.textContent = "Please calibrate axes first";
+                return;
+            }
+            const xIntervals = parseInt(xAxisIntervalsInput.value) || 5;
+            xAxisIntervals = [];
+            // Generate X-axis intervals - Clamped to pixel range
+            const xMinPixel = Math.min(calibrationPoints.xMin.x, calibrationPoints.xMax.x);
+            const xMaxPixel = Math.max(calibrationPoints.xMin.x, calibrationPoints.xMax.x);
+            const xStep = (xMaxPixel - xMinPixel) / (xIntervals + 1);
+            for (let i = 1; i <= xIntervals; i++) {
+                let x = xMinPixel + i * xStep;
+                // Clamp the pixel coordinate to the calibrated range
+                x = clamp(x, xMinPixel, xMaxPixel);
+                xAxisIntervals.push({ x: x, y: calibrationPoints.xMin.y });
+            }
+            updateAxisIntervalPointsDisplay();
+            updateAxisIntervalsTable();
+            drawCanvas();
+            statusBar.textContent = `Set ${xIntervals} X-axis intervals`;
+        }
+        // Set Y-axis intervals
+        function setYAxisIntervalsPoints() {
+            if (!isCalibrated) {
+                statusBar.textContent = "Please calibrate axes first";
+                return;
+            }
+            const yIntervals = parseInt(yAxisIntervalsInput.value) || 5;
+            yAxisIntervals = [];
+            // Generate Y-axis intervals - Clamped to pixel range
+            const yMinPixel = Math.min(calibrationPoints.yMin.y, calibrationPoints.yMax.y);
+            const yMaxPixel = Math.max(calibrationPoints.yMin.y, calibrationPoints.yMax.y);
+            const yStep = (yMaxPixel - yMinPixel) / (yIntervals + 1);
+            for (let i = 1; i <= yIntervals; i++) {
+                let y = yMinPixel + i * yStep;
+                // Clamp the pixel coordinate to the calibrated range
+                y = clamp(y, yMinPixel, yMaxPixel);
+                yAxisIntervals.push({ x: calibrationPoints.yMin.x, y: y });
+            }
+            updateAxisIntervalPointsDisplay();
+            updateAxisIntervalsTable();
+            drawCanvas();
+            statusBar.textContent = `Set ${yIntervals} Y-axis intervals`;
+        }
+        // Update axis interval points display
+        function updateAxisIntervalPointsDisplay() {
+            axisIntervalPoints.innerHTML = '';
+            if (xAxisIntervals.length === 0 && yAxisIntervals.length === 0) {
+                axisIntervalPoints.innerHTML = '<div>No axis intervals set</div>';
+                return;
+            }
+            // Display X-axis intervals
+            xAxisIntervals.forEach((point, index) => {
+                const realX = pixelToReal(point.x, point.y).x;
+                const item = document.createElement('div');
+                item.innerHTML = `X${index + 1}: ${axisConfig.x.label}(${realX.toFixed(2)})`;
+                axisIntervalPoints.appendChild(item);
+            });
+            // Display Y-axis intervals
+            yAxisIntervals.forEach((point, index) => {
+                const realY = pixelToReal(point.x, point.y).y;
+                const item = document.createElement('div');
+                item.innerHTML = `Y${index + 1}: ${axisConfig.y.label}(${realY.toFixed(2)})`;
+                axisIntervalPoints.appendChild(item);
+            });
+        }
+        
+        // Zoom function for buttons (zooms to center)
+        function zoomWithButtons(direction) {
+            const rect = canvas.getBoundingClientRect();
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            const worldX = (centerX - offsetX) / zoomLevel;
+            const worldY = (centerY - offsetY) / zoomLevel;
+            const zoomFactor = 1.2;
+            if (direction === 'in') {
+                zoomLevel *= zoomFactor;
+            } else {
+                zoomLevel /= zoomFactor;
+            }
+            zoomLevel = clamp(zoomLevel, 0.2, 5);
+            offsetX = centerX - worldX * zoomLevel;
+            offsetY = centerY - worldY * zoomLevel;
+            zoomLevelDisplay.textContent = Math.round(zoomLevel * 100) + '%';
+            drawCanvas();
+        }
+        
+        function resetZoom() {
+            zoomLevel = 1;
+            offsetX = 0;
+            offsetY = 0;
+            zoomLevelDisplay.textContent = '100%';
+            drawCanvas();
+        }
+        // Photo adjustment functions
+        function updatePhotoAdjustment() {
+            brightness = parseInt(brightnessControl.value);
+            contrast = parseInt(contrastControl.value);
+            rotation = parseInt(rotationControl.value);
+            tilt = parseInt(tiltControl.value);
+            drawCanvas();
+        }
+        function resetPhotoAdjustment() {
+            brightnessControl.value = 100;
+            contrastControl.value = 100;
+            rotationControl.value = 0;
+            tiltControl.value = 0;
+            brightness = 100;
+            contrast = 100;
+            rotation = 0;
+            tilt = 0;
+            drawCanvas();
+        }
+        // Toggle angle adjustment mode
+        function toggleAngleAdjustmentMode() {
+            isAngleAdjustmentMode = !isAngleAdjustmentMode;
+            angleAdjustmentBtn.classList.toggle('active', isAngleAdjustmentMode);
+            angleAdjustmentBtn.innerHTML = isAngleAdjustmentMode ?
+                '<i class="fas fa-adjust"></i> Disable Angle Adjustment Mode' :
+                '<i class="fas fa-adjust"></i> Enable Angle Adjustment Mode';
+            canvas.style.cursor = isAngleAdjustmentMode ? 'move' : 'crosshair';
+            statusBar.textContent = isAngleAdjustmentMode ?
+                "Angle adjustment mode enabled. Click and drag to adjust image orientation." :
+                "Angle adjustment mode disabled. Click on data points to select them.";
+        }
+        // Handle canvas mouse events for zooming and panning
+        canvas.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            // The world coordinates of the mouse position
+            const worldX = (mouseX - offsetX) / zoomLevel;
+            const worldY = (mouseY - offsetY) / zoomLevel;
+            const zoomFactor = 1.1;
+            if (e.deltaY < 0) { // Zoom in
+                zoomLevel *= zoomFactor;
+            } else { // Zoom out
+                zoomLevel /= zoomFactor;
+            }
+            // Clamp zoom level
+            zoomLevel = clamp(zoomLevel, 0.2, 5);
+            // New offsets to keep the world coordinates at the same mouse position
+            offsetX = mouseX - worldX * zoomLevel;
+            offsetY = mouseY - worldY * zoomLevel;
+            zoomLevelDisplay.textContent = Math.round(zoomLevel * 100) + '%';
+            drawCanvas();
+        });
+
+        canvas.addEventListener('mousedown', function(e) {
+            if (isAngleAdjustmentMode) {
+                isDragging = true; // For rotation/tilt
+                lastX = e.clientX;
+                lastY = e.clientY;
+                canvas.style.cursor = 'grabbing';
+            } else if (e.button === 1) { // Middle mouse button for panning
+                e.preventDefault();
+                isDragging = true; // For panning
+                lastX = e.clientX;
+                lastY = e.clientY;
+                canvas.style.cursor = 'grabbing';
+            }
+        });
+
+        canvas.addEventListener('mousemove', function(e) {
+            if (!isDragging) return;
+            const dx = e.clientX - lastX;
+            const dy = e.clientY - lastY;
+            if (isAngleAdjustmentMode) {
+                // Adjust rotation and tilt
+                rotation += dx * 0.1;
+                tilt += dy * 0.1;
+                rotationControl.value = rotation;
+                tiltControl.value = tilt;
+            } else {
+                // Pan the canvas
+                offsetX += dx;
+                offsetY += dy;
+            }
+            lastX = e.clientX;
+            lastY = e.clientY;
+            drawCanvas();
+        });
+
+        canvas.addEventListener('mouseup', function() {
+            isDragging = false;
+            canvas.style.cursor = isAngleAdjustmentMode ? 'move' : 'crosshair';
+        });
+
+        canvas.addEventListener('mouseleave', function() {
+            isDragging = false;
+            canvas.style.cursor = isAngleAdjustmentMode ? 'move' : 'crosshair';
+        });
+
+        // Handle canvas click based on current phase
+        canvas.addEventListener('click', function(e) {
+            if (isDragging) return; // Don't add point after panning
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left - offsetX) / zoomLevel;
+            const y = (e.clientY - rect.top - offsetY) / zoomLevel;
+            // Skip point selection if in angle adjustment mode
+            if (isAngleAdjustmentMode) {
+                return;
+            }
+            switch(currentPhase) {
+                case 1:
+                    // Phase 1: Import image - no action needed
+                    statusBar.textContent = "Image loaded. Click 'Next' to calibrate axes.";
+                    break;
+                case 2:
+                    // Phase 2: Calibrate axes
+                    handleCalibrationClick(x, y);
+                    break;
+                case 3:
+                    // Phase 3: Select data points
+                    if (!isCalibrated) {
+                        statusBar.textContent = "Please calibrate axes first";
+                        return;
+                    }
+                    points.push({ x, y });
+                    updatePointsList();
+                    updateCoordinatesTable();
+                    drawCanvas();
+                    statusBar.textContent = `Added point ${points.length}. Click to add more points.`;
+                    break;
+                default:
+                    statusBar.textContent = "Please follow the workflow steps";
+            }
+        });
+        // Handle calibration clicks
+        function handleCalibrationClick(x, y) {
+            if (!calibrationPoints.xMin) {
+                calibrationPoints.xMin = { x, y };
+                statusBar.textContent = "X-axis minimum set. Now click on X-axis maximum.";
+            } else if (!calibrationPoints.xMax) {
+                calibrationPoints.xMax = { x, y };
+                statusBar.textContent = "X-axis maximum set. Now click on Y-axis minimum.";
+            } else if (!calibrationPoints.yMin) {
+                calibrationPoints.yMin = { x, y };
+                statusBar.textContent = "Y-axis minimum set. Now click on Y-axis maximum.";
+            } else if (!calibrationPoints.yMax) {
+                calibrationPoints.yMax = { x, y };
+                isCalibrated = true;
+                axisConfig.x.minValue = parseFloat(xMinValue.value) || 0;
+                axisConfig.x.maxValue = parseFloat(xMaxValue.value) || 10;
+                axisConfig.y.minValue = parseFloat(yMinValue.value) || 0;
+                axisConfig.y.maxValue = parseFloat(yMaxValue.value) || 100;
+                updateAxisLabels();
+                drawCanvas();
+                statusBar.textContent = "Axis calibration complete! Click 'Next' to continue.";
+            }
+            drawCanvas();
+        }
+        // Reset calibration
+        function resetCalibrationPoints() {
+            calibrationPoints = {
+                xMin: null,
+                xMax: null,
+                yMin: null,
+                yMax: null
+            };
+            xAxisIntervals = [];
+            yAxisIntervals = [];
+            isCalibrated = false;
+            updateAxisIntervalPointsDisplay();
+            updateAxisIntervalsTable();
+            drawCanvas();
+            statusBar.textContent = "Calibration reset. Click on X-axis minimum to start.";
+        }
+        // Update points list display
+        function updatePointsList() {
+            pointsList.innerHTML = '';
+            if (points.length === 0) {
+                pointsList.innerHTML = '<div>No points selected yet</div>';
+                return;
+            }
+            points.forEach((point, index) => {
+                const realCoords = pixelToReal(point.x, point.y);
+                const item = document.createElement('div');
+                item.innerHTML = `
+                    <span>Point ${index + 1}: ${axisConfig.x.label}(${realCoords.x.toFixed(2)}), ${axisConfig.y.label}(${realCoords.y.toFixed(2)})</span>
+                    <button class="remove-point" data-index="${index}"><i class="fas fa-times"></i></button>
+                `;
+                pointsList.appendChild(item);
+            });
+            // Add event listeners to remove buttons
+            document.querySelectorAll('.remove-point').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    points.splice(index, 1);
+                    updatePointsList();
+                    updateCoordinatesTable();
+                    drawCanvas();
+                    statusBar.textContent = `Removed point ${index + 1}.`;
+                });
+            });
+        }
+        // Update axis labels
+        function updateAxisLabels() {
+            canvasXLabel.textContent = xAxisLabel.value;
+            canvasYLabel.textContent = yAxisLabel.value;
+        }
+        // Interpolate points with segments between points - Ensuring points stay within axis ranges
+        function interpolatePoints() {
+            if (points.length < 2) {
+                alert('Need at least 2 points to interpolate');
+                return;
+            }
+
+            const realUserPoints = points.map(p => pixelToReal(p.x, p.y)).sort((a, b) => a.x - b.x);
+            const segmentsPerPair = parseInt(segmentsSlider.value);
+
+            // If no segments are requested, the interpolated set is just the original points
+            if (segmentsPerPair < 1) {
+                interpolatedPoints = realUserPoints.map(rp => {
+                    const pixel = realToPixel(rp.x, rp.y);
+                    return { x: pixel.x, y: pixel.y, realX: rp.x, realY: rp.y };
+                });
+                updateInterpolatedPreview();
+                drawCanvas();
+                statusBar.textContent = "Segments set to 0. Displaying original points.";
+                return;
+            }
+
+            const firstPoint = realUserPoints[0];
+            const lastPoint = realUserPoints[realUserPoints.length - 1];
+            const totalTimeRange = lastPoint.x - firstPoint.x;
+            const numUserSegments = realUserPoints.length - 1;
+
+            // Total intervals is the sum of intervals between each user-selected point pair.
+            const totalIntervals = numUserSegments * (segmentsPerPair + 1);
+            
+            if (totalIntervals <= 0 || totalTimeRange <= 0) {
+                statusBar.textContent = "Cannot interpolate. Check points or segment count.";
+                return;
+            }
+
+            const timeStep = totalTimeRange / totalIntervals;
+            interpolatedPoints = [];
+            let currentUserSegmentIndex = 0;
+            calculatedTimeStep = timeStep; // Store the calculated time step globally
+
+            for (let i = 0; i <= totalIntervals; i++) {
+                const currentTime = firstPoint.x + i * timeStep;
+
+                // Find which two user points the currentTime falls between
+                while (currentUserSegmentIndex < realUserPoints.length - 2 && currentTime > realUserPoints[currentUserSegmentIndex + 1].x) {
+                    currentUserSegmentIndex++;
+                }
+
+                const p1 = realUserPoints[currentUserSegmentIndex];
+                const p2 = realUserPoints[currentUserSegmentIndex + 1];
+
+                // Linearly interpolate the Y value
+                const segmentTimeRange = p2.x - p1.x;
+                
+                let currentY;
+                if (segmentTimeRange <= 0) {
+                    currentY = p1.y; // Handle vertical lines or overlapping points
+                } else {
+                    const timeInSegment = currentTime - p1.x;
+                    const ratio = timeInSegment / segmentTimeRange;
+                    currentY = p1.y + ratio * (p2.y - p1.y);
+                }
+
+                // Clamp final values to axis ranges
+                const finalX = clamp(currentTime, axisConfig.x.minValue, axisConfig.x.maxValue);
+                const finalY = clamp(currentY, axisConfig.y.minValue, axisConfig.y.maxValue);
+                
+                const pixel = realToPixel(finalX, finalY);
+                interpolatedPoints.push({
+                    x: pixel.x,
+                    y: pixel.y,
+                    realX: finalX,
+                    realY: finalY
+                });
+            }
+            
+            // Display the calculated time interval in the new UI element
+            timeIntervalDisplay.textContent = `${calculatedTimeStep.toFixed(4)} s`;
+            timeIntervalInfo.style.display = 'block';
+
+            updateInterpolatedPreview();
+            drawCanvas();
+            statusBar.textContent = `Interpolated ${interpolatedPoints.length} points with a uniform time step of ${calculatedTimeStep.toFixed(4)}.`;
+        }
+        // Clear interpolated points
+        function clearInterpolatedPoints() {
+            interpolatedPoints = [];
+            calculatedTimeStep = 0; // Reset stored time step
+            timeIntervalInfo.style.display = 'none'; // Hide the time interval display in Step 4
+            updateInterpolatedPreview();
+            drawCanvas(); // Redraw canvas to remove interpolated points
+            statusBar.textContent = "Interpolation has been reset. You can now adjust intervals and re-interpolate.";
+        }
+        // Update interpolated points preview
+        function updateInterpolatedPreview() {
+            interpolatedPreview.innerHTML = '';
+            if (interpolatedPoints.length === 0) {
+                interpolatedPreview.innerHTML = '<div>No interpolation performed yet</div>';
+                return;
+            }
+            interpolatedPoints.forEach((point, index) => {
+                const item = document.createElement('div');
+                item.innerHTML = `
+                    <span>Point ${index + 1}: ${axisConfig.x.label}(${point.realX.toFixed(2)}), ${axisConfig.y.label}(${point.realY.toFixed(2)})</span>
+                `;
+                interpolatedPreview.appendChild(item);
+            });
+        }
+        // Export data as CSV (MODIFIED)
+        function exportData() {
+            if (points.length === 0) {
+                alert('No data to export');
+                return;
+            }
+
+            let pointsToExport;
+            let statusMessage = "Data exported successfully!";
+
+            if (interpolatedPoints.length > 0) {
+                // If interpolation has been run, use that data for a uniform timeline
+                pointsToExport = interpolatedPoints.map(p => ({ x: p.realX, y: p.realY }));
+                statusMessage = "Uniformly interpolated data exported successfully!";
+            } else {
+                // Otherwise, use the user-selected points, sorted by time
+                pointsToExport = points.map(p => pixelToReal(p.x, p.y)).sort((a, b) => a.x - b.x);
+                statusMessage = "Original data points exported successfully!";
+            }
+
+            if (pointsToExport.length === 0) {
+                alert('No data points available to export.');
+                return;
+            }
+
+            // Create CSV content with custom labels
+            const customXLabel = exportXAxisLabel.value || axisConfig.x.label;
+            const customYLabel = exportYAxisLabel.value || axisConfig.y.label;
+            let csvContent = `${customXLabel},${customYLabel}\n`;
+            pointsToExport.forEach(point => {
+                csvContent += `${point.x},${point.y}\n`;
+            });
+
+            // Create download link
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'datavision_export.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            statusBar.textContent = statusMessage;
+        }
+        // Update data summary
+        function updateDataSummary() {
+            originalCount.textContent = points.length;
+            interpolatedCount.textContent = interpolatedPoints.length;
+            totalCount.textContent = points.length + interpolatedPoints.length;
+
+            // Show or hide the time interval summary in Step 5
+            if (interpolatedPoints.length > 0 && calculatedTimeStep > 0) {
+                timeIntervalSummary.textContent = calculatedTimeStep.toFixed(4);
+                timeIntervalSummaryContainer.style.display = 'block';
+            } else {
+                timeIntervalSummaryContainer.style.display = 'none';
+            }
+
+            // Update export preview
+            exportPreview.innerHTML = '';
+            if (points.length === 0 && interpolatedPoints.length === 0) {
+                exportPreview.innerHTML = '<div>No data to preview</div>';
+                return;
+            }
+            // Combine all points
+            const allPoints = [...points, ...interpolatedPoints];
+            allPoints.forEach((point, index) => {
+                const real = point.realX !== undefined ?
+                    { x: point.realX, y: point.realY } :
+                    pixelToReal(point.x, point.y);
+                const item = document.createElement('div');
+                item.innerHTML = `
+                    <span>Point ${index + 1}: ${axisConfig.x.label}(${real.x.toFixed(2)}), ${axisConfig.y.label}(${real.y.toFixed(2)})</span>
+                `;
+                exportPreview.appendChild(item);
+            });
+        }
+        // Change phase
+        function changePhase(newPhase) {
+            // Hide all phases
+            document.querySelectorAll('.phase-content').forEach(phase => {
+                phase.classList.remove('active');
+            });
+            // Deactivate all steps
+            document.querySelectorAll('.step').forEach(step => {
+                step.classList.remove('active', 'complete');
+            });
+            // Activate current phase
+            document.getElementById(`phase${newPhase}`).classList.add('active');
+            document.getElementById(`step${newPhase}`).classList.add('active');
+            // Mark previous steps as complete
+            for (let i = 1; i < newPhase; i++) {
+                document.getElementById(`step${i}`).classList.add('complete');
+            }
+            currentPhase = newPhase;
+            // Update progress bar
+            const progress = (newPhase - 1) * 25;
+            progressBar.style.width = `${progress}%`;
+            // Update status bar
+            const phaseMessages = [
+                "Ready to import diagram. Please select an image file.",
+                "Calibrate axes by clicking on min/max points and entering values.",
+                "Select data points along your curve. Points will appear in blue.",
+                "Set interpolation interval and generate points.",
+                "Review and export your data."
+            ];
+            statusBar.textContent = phaseMessages[newPhase - 1];
+            // Update data summary if moving to phase 5
+            if (newPhase === 5) {
+                updateDataSummary();
+                // Pre-populate export labels
+                exportXAxisLabel.value = axisConfig.x.label;
+                exportYAxisLabel.value = axisConfig.y.label;
+            }
+             // Redraw canvas when changing phases to ensure points are visible
+            drawCanvas();
+        }
+        
+        // Update coordinates table
+        function updateCoordinatesTable() {
+            coordinatesTableBody.innerHTML = '';
+            if (points.length === 0) {
+                coordinatesTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No points added yet</td></tr>';
+                return;
+            }
+            points.forEach((point, index) => {
+                const real = pixelToReal(point.x, point.y);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td><input type="number" class="pixel-x" data-index="${index}" value="${point.x.toFixed(2)}" step="0.1"></td>
+                    <td><input type="number" class="pixel-y" data-index="${index}" value="${point.y.toFixed(2)}" step="0.1"></td>
+                    <td><input type="number" class="real-x" data-index="${index}" value="${real.x.toFixed(2)}" step="0.1"></td>
+                    <td><input type="number" class="real-y" data-index="${index}" value="${real.y.toFixed(2)}" step="0.1"></td>
+                    <td class="actions">
+                        <button class="action-btn delete-btn" data-index="${index}"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                coordinatesTableBody.appendChild(row);
+            });
+            // Add event listeners for input changes
+            document.querySelectorAll('.pixel-x, .pixel-y, .real-x, .real-y').forEach(input => {
+                input.addEventListener('change', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    const value = parseFloat(this.value);
+                    if (this.classList.contains('pixel-x')) {
+                        points[index].x = value;
+                    } else if (this.classList.contains('pixel-y')) {
+                        points[index].y = value;
+                    } else if (this.classList.contains('real-x')) {
+                        // Convert real to pixel
+                        const pixel = realToPixel(value, pixelToReal(points[index].x, points[index].y).y);
+                        points[index].x = pixel.x;
+                    } else if (this.classList.contains('real-y')) {
+                        // Convert real to pixel
+                        const pixel = realToPixel(pixelToReal(points[index].x, points[index].y).x, value);
+                        points[index].y = pixel.y;
+                    }
+                    drawCanvas();
+                    updatePointsList();
+                });
+            });
+            // Add event listeners for delete buttons
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    points.splice(index, 1);
+                    updateCoordinatesTable();
+                    updatePointsList();
+                    drawCanvas();
+                    statusBar.textContent = `Removed point ${index + 1}.`;
+                });
+            });
+        }
+        // Update axis intervals table
+        function updateAxisIntervalsTable() {
+            axisIntervalsTableBody.innerHTML = '';
+            if (xAxisIntervals.length === 0 && yAxisIntervals.length === 0) {
+                axisIntervalsTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No axis intervals set</td></tr>';
+                return;
+            }
+            // Display X-axis intervals
+            xAxisIntervals.forEach((point, index) => {
+                const real = pixelToReal(point.x, point.y);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>X-Axis ${index + 1}</td>
+                    <td><input type="number" class="axis-pixel-x" data-index="${index}" data-axis="x" value="${point.x.toFixed(2)}" step="0.1"></td>
+                    <td><input type="number" class="axis-pixel-y" data-index="${index}" data-axis="x" value="${point.y.toFixed(2)}" step="0.1"></td>
+                    <td><input type="number" class="axis-real-value" data-index="${index}" data-axis="x" value="${real.x.toFixed(2)}" step="0.1"></td>
+                    <td class="actions">
+                        <button class="action-btn delete-axis-btn" data-index="${index}" data-axis="x"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                axisIntervalsTableBody.appendChild(row);
+            });
+            // Display Y-axis intervals
+            yAxisIntervals.forEach((point, index) => {
+                const real = pixelToReal(point.x, point.y);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>Y-Axis ${index + 1}</td>
+                    <td><input type="number" class="axis-pixel-x" data-index="${index}" data-axis="y" value="${point.x.toFixed(2)}" step="0.1"></td>
+                    <td><input type="number" class="axis-pixel-y" data-index="${index}" data-axis="y" value="${point.y.toFixed(2)}" step="0.1"></td>
+                    <td><input type="number" class="axis-real-value" data-index="${index}" data-axis="y" value="${real.y.toFixed(2)}" step="0.1"></td>
+                    <td class="actions">
+                        <button class="action-btn delete-axis-btn" data-index="${index}" data-axis="y"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                axisIntervalsTableBody.appendChild(row);
+            });
+            // Add event listeners for input changes
+            document.querySelectorAll('.axis-pixel-x, .axis-pixel-y, .axis-real-value').forEach(input => {
+                input.addEventListener('change', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    const axis = this.getAttribute('data-axis');
+                    const value = parseFloat(this.value);
+                    if (axis === 'x') {
+                        if (this.classList.contains('axis-pixel-x')) {
+                            xAxisIntervals[index].x = value;
+                        } else if (this.classList.contains('axis-pixel-y')) {
+                            xAxisIntervals[index].y = value;
+                        } else if (this.classList.contains('axis-real-value')) {
+                            // Convert real to pixel
+                            const pixel = realToPixel(value, pixelToReal(xAxisIntervals[index].x, xAxisIntervals[index].y).y);
+                            xAxisIntervals[index].x = pixel.x;
+                        }
+                    } else if (axis === 'y') {
+                        if (this.classList.contains('axis-pixel-x')) {
+                            yAxisIntervals[index].x = value;
+                        } else if (this.classList.contains('axis-pixel-y')) {
+                            yAxisIntervals[index].y = value;
+                        } else if (this.classList.contains('axis-real-value')) {
+                            // Convert real to pixel
+                            const pixel = realToPixel(pixelToReal(yAxisIntervals[index].x, yAxisIntervals[index].y).x, value);
+                            yAxisIntervals[index].y = pixel.y;
+                        }
+                    }
+                    drawCanvas();
+                    updateAxisIntervalPointsDisplay();
+                });
+            });
+            // Add event listeners for delete buttons
+            document.querySelectorAll('.delete-axis-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    const axis = this.getAttribute('data-axis');
+                    if (axis === 'x') {
+                        xAxisIntervals.splice(index, 1);
+                    } else if (axis === 'y') {
+                        yAxisIntervals.splice(index, 1);
+                    }
+                    updateAxisIntervalsTable();
+                    updateAxisIntervalPointsDisplay();
+                    drawCanvas();
+                    statusBar.textContent = `Removed ${axis}-axis interval ${index + 1}.`;
+                });
+            });
+        }
+        // Update points from table
+        function updatePointsFromTable() {
+            points.forEach((point, index) => {
+                const pixelXInput = document.querySelector(`.pixel-x[data-index="${index}"]`);
+                const pixelYInput = document.querySelector(`.pixel-y[data-index="${index}"]`);
+                if (pixelXInput && pixelYInput) {
+                    point.x = parseFloat(pixelXInput.value);
+                    point.y = parseFloat(pixelYInput.value);
+                }
+            });
+            drawCanvas();
+            updatePointsList();
+            statusBar.textContent = "Points updated from table.";
+        }
+        // Update axis intervals from table
+        function updateAxisIntervalsFromTable() {
+            xAxisIntervals.forEach((point, index) => {
+                const pixelXInput = document.querySelector(`.axis-pixel-x[data-index="${index}"][data-axis="x"]`);
+                const pixelYInput = document.querySelector(`.axis-pixel-y[data-index="${index}"][data-axis="x"]`);
+                const realValueInput = document.querySelector(`.axis-real-value[data-index="${index}"][data-axis="x"]`);
+                if (pixelXInput && pixelYInput && realValueInput) {
+                    point.x = parseFloat(pixelXInput.value);
+                    point.y = parseFloat(pixelYInput.value);
+                }
+            });
+            yAxisIntervals.forEach((point, index) => {
+                const pixelXInput = document.querySelector(`.axis-pixel-x[data-index="${index}"][data-axis="y"]`);
+                const pixelYInput = document.querySelector(`.axis-pixel-y[data-index="${index}"][data-axis="y"]`);
+                const realValueInput = document.querySelector(`.axis-real-value[data-index="${index}"][data-axis="y"]`);
+                if (pixelXInput && pixelYInput && realValueInput) {
+                    point.x = parseFloat(pixelXInput.value);
+                    point.y = parseFloat(pixelYInput.value);
+                }
+            });
+            drawCanvas();
+            updateAxisIntervalPointsDisplay();
+            statusBar.textContent = "Axis intervals updated from table.";
+        }
+        // Add new row to table
+        function addNewRow() {
+            // Add a new point at the center of the canvas
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const pixelX = (centerX - offsetX) / zoomLevel;
+            const pixelY = (centerY - offsetY) / zoomLevel;
+            points.push({ x: pixelX, y: pixelY });
+            updateCoordinatesTable();
+            updatePointsList();
+            drawCanvas();
+            statusBar.textContent = `Added new point at center of canvas.`;
+        }
+        // Event Listeners
+        window.addEventListener('load', initCanvas);
+        window.addEventListener('resize', initCanvas);
+        imageUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                fileName.textContent = file.name;
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    // Display preview in the upload box
+                    imagePreview.src = event.target.result;
+                    imagePreview.style.display = 'block';
+                    uploadPrompt.style.display = 'none';
+                    // Load image for canvas processing
+                    backgroundImage = new Image();
+                    backgroundImage.onload = function() {
+                        drawCanvas();
+                        statusBar.textContent = "Diagram loaded. Click 'Next' to calibrate axes.";
+                    };
+                    backgroundImage.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                fileName.textContent = "No file selected";
+                // Reset preview
+                imagePreview.src = "#";
+                imagePreview.style.display = 'none';
+                uploadPrompt.style.display = 'block';
+            }
+        });
+        // Navigation buttons
+        nextToPhase2.addEventListener('click', () => changePhase(2));
+        nextToPhase3.addEventListener('click', () => {
+            if (!isCalibrated) {
+                statusBar.textContent = "Please complete axis calibration first";
+                return;
+            }
+            changePhase(3);
+        });
+        nextToPhase4.addEventListener('click', () => {
+            if (points.length < 2) {
+                statusBar.textContent = "Please select at least 2 data points";
+                return;
+            }
+            changePhase(4);
+        });
+        nextToPhase5.addEventListener('click', () => changePhase(5));
+        backToPhase1.addEventListener('click', () => changePhase(1));
+        backToPhase2.addEventListener('click', () => changePhase(2));
+        backToPhase3.addEventListener('click', () => changePhase(3));
+        backToPhase4.addEventListener('click', () => changePhase(4));
+        resetCalibration.addEventListener('click', resetCalibrationPoints);
+        clearPoints.addEventListener('click', function() {
+            points = [];
+            updatePointsList();
+            updateCoordinatesTable();
+            drawCanvas();
+            statusBar.textContent = "All points cleared. Click on the diagram to add new points.";
+        });
+        // Clear Interpolated Points button listener
+        resetInterpolationBtn.addEventListener('click', clearInterpolatedPoints);
+        interpolateBtn.addEventListener('click', interpolatePoints);
+        exportBtn.addEventListener('click', exportData);
+        setXAxisIntervals.addEventListener('click', setXAxisIntervalsPoints);
+        setYAxisIntervals.addEventListener('click', setYAxisIntervalsPoints);
+        updateCoordinatesBtn.addEventListener('click', updatePointsFromTable);
+        updateAxisIntervalsBtn.addEventListener('click', updateAxisIntervalsFromTable);
+        addRowBtn.addEventListener('click', addNewRow);
+        angleAdjustmentBtn.addEventListener('click', toggleAngleAdjustmentMode);
+        segmentsSlider.addEventListener('input', function() {
+            segmentsValueDisplay.textContent = this.value;
+            segmentsDisplay.textContent = this.value;
+        });
+        xAxisLabel.addEventListener('input', updateAxisLabels);
+        yAxisLabel.addEventListener('input', updateAxisLabels);
+        // Zoom controls
+        zoomIn.addEventListener('click', () => zoomWithButtons('in'));
+        zoomOut.addEventListener('click', () => zoomWithButtons('out'));
+        zoomReset.addEventListener('click', resetZoom);
+        // Photo adjustment controls
+        brightnessControl.addEventListener('input', updatePhotoAdjustment);
+        contrastControl.addEventListener('input', updatePhotoAdjustment);
+        rotationControl.addEventListener('input', updatePhotoAdjustment);
+        tiltControl.addEventListener('input', updatePhotoAdjustment);
+        resetAdjustment.addEventListener('click', resetPhotoAdjustment);
+
+        // Initialize with sample data for demonstration
+        window.addEventListener('load', function() {
+            // Set up sample calibration
+            xAxisLabel.value = "Time (s)";
+            yAxisLabel.value = "Acceleration (m/s²)";
+            xMinValue.value = 0;
+            xMaxValue.value = 10;
+            yMinValue.value = 0;
+            yMaxValue.value = 100;
+            updateAxisLabels();
+        });
+    </script>
+</body>
+</html>
