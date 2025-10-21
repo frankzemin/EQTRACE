@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EQTRACE - Comprehensive Geotechnical Analysis Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/1.4.0/chartjs-plugin-annotation.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-main: #F0F2F5; --bg-sidebar: #1A202C; --bg-header: #FFFFFF;
+            --text-primary: #1A202C; --text-secondary: #718096;
+            --text-sidebar: #A0AEC0; --text-sidebar-hover: #FFFFFF;
+            --border-color: #E2E8F0; --accent-primary: #2563EB; --accent-primary-hover: #1D4ED8;
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-main); color: var(--text-primary); }
+        .app-layout { display: grid; grid-template-columns: 280px 1fr; grid-template-rows: 64px 1fr 40px;
+            grid-template-areas: "header header" "sidebar main" "sidebar footer";
+            height: 100vh; overflow: hidden; transition: grid-template-columns 0.3s; }
+        .app-layout.sidebar-collapsed { grid-template-columns: 68px 1fr; }
+        .app-header { grid-area: header; } .app-sidebar { grid-area: sidebar; }
+        .app-main { grid-area: main; overflow-y: auto; padding: 2rem; } .app-footer { grid-area: footer; }
+        .sidebar-nav-item { display: flex; align-items: center; padding: 0.75rem 1.5rem; color: var(--text-sidebar);
+            font-weight: 500; border-left: 3px solid transparent; transition: all 0.2s; cursor: pointer; }
+        .sidebar-nav-item i { width: 24px; margin-right: 0.75rem; text-align: center; }
+        .sidebar-nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text-sidebar-hover); }
+        .sidebar-nav-item.active { background: rgba(37,99,235,0.2); color: var(--text-sidebar-hover); border-left-color: var(--accent-primary); }
+        .phase-content { display: none; animation: fadeIn 0.5s; }
+        .phase-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="app-layout" id="app-layout">
+        <header class="app-header bg-white border-b flex items-center justify-between px-6">
+            <div class="flex items-center gap-3">
+                <button id="sidebar-toggle-btn" class="p-2 rounded-full hover:bg-gray-100"><i class="fas fa-bars text-gray-600"></i></button>
+                <div class="flex items-center gap-3">
+                    <svg width="32" height="32" viewBox="0 0 48 48"><g fill="none"><rect width="48" height="36" y="12" fill="#F0F2F5" rx="2"/><rect y="35" width="48" height="13" fill="#37474F" rx="2"/><path d="M2 12 Q8 8 14 12 T26 12 T38 12 T46 12" stroke="#D63946" stroke-width="2.5"/><path d="M2 30 Q8 28 14 30 T26 30 T38 30 T46 30" stroke="#1976D2" stroke-width="2"/></g></svg>
+                    <div><h1 class="text-xl font-bold">EQTRACE</h1><p class="text-xs text-gray-500">Comprehensive geotechnical analysis platform</p></div>
+                </div>
+            </div>
+        </header>
+
+        <aside class="app-sidebar text-white" style="background: var(--bg-sidebar);">
+            <nav class="mt-8">
+                <a onclick="showPhase(1)" id="tab-1" class="sidebar-nav-item active"><i class="fas fa-info-circle"></i><span>Platform Introduction</span></a>
+                <a onclick="showPhase(2)" id="tab-2" class="sidebar-nav-item"><i class="fas fa-chart-line"></i><span>Amplitude Calibration</span></a>
+                <a onclick="showPhase(3)" id="tab-3" class="sidebar-nav-item"><i class="fas fa-balance-scale"></i><span>Similarity Evaluation</span></a>
+                <a onclick="showPhase(4)" id="tab-4" class="sidebar-nav-item"><i class="fas fa-atom"></i><span>Artificial Earthquake</span></a>
+                <a onclick="showPhase(5)" id="tab-5" class="sidebar-nav-item"><i class="fas fa-search-plus"></i><span>Earthquake Interpolation</span></a>
+            </nav>
+        </aside>
+
+        <main class="app-main" id="main-content">
+            <!-- Phase 1: Platform Introduction -->
+            <div id="phase-1" class="phase-content active">
+                <div class="text-center mb-8">
+                    <h1 class="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                        EQTRACE Platform
+                    </h1>
+                    <p class="text-lg text-gray-600 max-w-3xl mx-auto">Comprehensive geotechnical analysis for seismic ground motion deconvolution and site response assessment</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+                    <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+                        <div class="text-blue-600 text-3xl mb-4"><i class="fas fa-chart-line"></i></div>
+                        <h3 class="text-xl font-bold mb-2">Amplitude Calibration</h3>
+                        <p class="text-gray-600">Analyze and calibrate acceleration attenuation characteristics of seismic data</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+                        <div class="text-purple-600 text-3xl mb-4"><i class="fas fa-balance-scale"></i></div>
+                        <h3 class="text-xl font-bold mb-2">Similarity Evaluation</h3>
+                        <p class="text-gray-600">Quantitatively evaluate and select representative ground motion records</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+                        <div class="text-amber-600 text-3xl mb-4"><i class="fas fa-atom"></i></div>
+                        <h3 class="text-xl font-bold mb-2">Artificial Earthquake</h3>
+                        <p class="text-gray-600">Generate synthetic, site-specific earthquake records</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+                        <div class="text-green-600 text-3xl mb-4"><i class="fas fa-search-plus"></i></div>
+                        <h3 class="text-xl font-bold mb-2">Earthquake Interpolation</h3>
+                        <p class="text-gray-600">Generate new time histories by interpolating existing ground motion records</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+                        <div class="text-teal-600 text-3xl mb-4"><i class="fas fa-chart-area"></i></div>
+                        <h3 class="text-xl font-bold mb-2">Real-time Visualization</h3>
+                        <p class="text-gray-600">Instantly visualize data and results with interactive charts</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phase 2: Amplitude Calibration -->
+            <div id="phase-2" class="phase-content">
+                <h2 class="text-3xl font-bold mb-6">Amplitude Calibration</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <p class="text-gray-600 mb-4">Analyze acceleration attenuation characteristics by uploading ground motion records to generate attenuation plots and extract key parameters.</p>
+                    <div class="grid grid-cols-2 gap-4 mt-6">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Time Interval (s)</label>
+                            <input type="number" id="amp-time-interval" value="0.01" step="0.001" class="w-full border rounded px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Upload Data Files</label>
+                            <input type="file" id="amp-upload" multiple accept=".csv,.txt" class="w-full border rounded px-3 py-2">
+                        </div>
+                    </div>
+                    <div class="mt-6"><canvas id="amp-chart" height="300"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Phase 3: Similarity Evaluation -->
+            <div id="phase-3" class="phase-content">
+                <h2 class="text-3xl font-bold mb-6">Similarity Evaluation</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <p class="text-gray-600 mb-4">Evaluate similarity between site response records using NRMSE, CCC, Cross-Correlation, and DTW metrics.</p>
+                    <div class="grid grid-cols-2 gap-4 mt-6">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Sampling Interval (s)</label>
+                            <input type="number" id="sim-interval" value="0.01" step="0.001" class="w-full border rounded px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Data Points Limit</label>
+                            <input type="number" id="sim-limit" value="1000" class="w-full border rounded px-3 py-2">
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"><i class="fas fa-upload mr-2"></i>Upload Model Output Files</button>
+                        <button class="bg-teal-600 text-white px-6 py-2 rounded hover:bg-teal-700 ml-2"><i class="fas fa-file-import mr-2"></i>Upload Seed Acceleration</button>
+                    </div>
+                    <div class="mt-6"><canvas id="sim-chart" height="300"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Phase 4: Artificial Earthquake -->
+            <div id="phase-4" class="phase-content">
+                <h2 class="text-3xl font-bold mb-6">Artificial Earthquake Generation</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <p class="text-gray-600 mb-4">Generate synthetic earthquake records based on site-specific conditions and target response spectra.</p>
+                    <div class="grid grid-cols-3 gap-4 mt-6">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Duration (s)</label>
+                            <input type="number" id="art-duration" value="30" class="w-full border rounded px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Frequency (Hz)</label>
+                            <input type="number" id="art-freq" value="1.0" step="0.1" class="w-full border rounded px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Amplitude (m/s²)</label>
+                            <input type="number" id="art-amp" value="0.1" step="0.01" class="w-full border rounded px-3 py-2">
+                        </div>
+                    </div>
+                    <button onclick="generateArtificialEarthquake()" class="mt-4 bg-purple-600 text-white px-6 py-2 rounded hover:bg-purple-700"><i class="fas fa-play mr-2"></i>Generate Waveform</button>
+                    <div class="mt-6"><canvas id="art-chart" height="300"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Phase 5: Earthquake Interpolation -->
+            <div id="phase-5" class="phase-content">
+                <h2 class="text-3xl font-bold mb-6">Earthquake Interpolation</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <p class="text-gray-600 mb-4">Interpolate between existing ground motion records to create new time histories matching specific target criteria.</p>
+                    <div class="grid grid-cols-2 gap-4 mt-6">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Upload First Record</label>
+                            <input type="file" id="interp-file1" accept=".csv,.txt" class="w-full border rounded px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Upload Second Record</label>
+                            <input type="file" id="interp-file2" accept=".csv,.txt" class="w-full border rounded px-3 py-2">
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium mb-2">Interpolation Weight (0 to 1)</label>
+                        <input type="range" id="interp-weight" min="0" max="1" step="0.01" value="0.5" class="w-full">
+                        <span id="interp-weight-val" class="text-sm font-mono">0.50</span>
+                    </div>
+                    <button onclick="performInterpolation()" class="mt-4 bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"><i class="fas fa-calculator mr-2"></i>Interpolate</button>
+                    <div class="mt-6"><canvas id="interp-chart" height="300"></canvas></div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="app-footer flex items-center px-6 text-xs" style="color: var(--text-sidebar); background: var(--bg-sidebar);">
+            <p>© 2025 EQTRACE | Developed by Minze Chen</p>
+        </footer>
+    </div>
+
+    <script>
+        let charts = {};
+
+        function showPhase(n) {
+            document.querySelectorAll('.phase-content').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.sidebar-nav-item').forEach(t => t.classList.remove('active'));
+            document.getElementById('phase-' + n).classList.add('active');
+            document.getElementById('tab-' + n).classList.add('active');
+        }
+
+        document.getElementById('sidebar-toggle-btn').addEventListener('click', () => {
+            document.getElementById('app-layout').classList.toggle('sidebar-collapsed');
+        });
+
+        function initChart(id) {
+            const ctx = document.getElementById(id);
+            if (!ctx) return;
+            if (charts[id]) charts[id].destroy();
+            charts[id] = new Chart(ctx, {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: 'Acceleration', data: [], borderColor: '#2563EB', borderWidth: 2 }] },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        function generateArtificialEarthquake() {
+            const duration = parseFloat(document.getElementById('art-duration').value);
+            const freq = parseFloat(document.getElementById('art-freq').value);
+            const amp = parseFloat(document.getElementById('art-amp').value);
+            const samples = 50;
+            const dt = duration / samples;
+            const labels = [], data = [];
+            for (let i = 0; i <= samples; i++) {
+                const t = i * dt;
+                labels.push(t.toFixed(2));
+                data.push((amp * Math.sin(2 * Math.PI * freq * t)).toFixed(4));
+            }
+            initChart('art-chart');
+            charts['art-chart'].data.labels = labels;
+            charts['art-chart'].data.datasets[0].data = data;
+            charts['art-chart'].update();
+        }
+
+        function performInterpolation() {
+            alert('Interpolation functionality requires file uploads. Upload two ground motion records to proceed.');
+        }
+
+        document.getElementById('interp-weight')?.addEventListener('input', (e) => {
+            document.getElementById('interp-weight-val').textContent = parseFloat(e.target.value).toFixed(2);
+        });
+
+        ['amp-chart', 'sim-chart', 'art-chart', 'interp-chart'].forEach(initChart);
+    </script>
+</body>
+</html>
